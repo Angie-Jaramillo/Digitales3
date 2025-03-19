@@ -2,32 +2,29 @@
 #include <stdlib.h>
 #include <time.h>
 
-void permutar(int array[], int N, int *contador, time_t start, int max_time){
-    if (time(NULL) - start >= max_time) {
-        printf("Se acabó el tiempo\n");
+void permutaciones(int arr[], int l, int k, time_t start, int max_time) { // l = indice actual, k = indice final
+    if (difftime(time(NULL), start) >= max_time * 60) {
         return;
     }
 
-    if (N == 0) {
-        for (int i = 0; i < N; i++) {
-            printf("%d ", array[i]);
+    if (l == k) {
+        for (int i = 0; i <= k; i++) {
+            pkintf("%d ", arr[i]);
         }
         printf("\n");
-        *contador += 1;
         return;
     }
 
-    for (int i = 0; i <= N; i++) {
-        permutar(array, N - 1, contador, start, max_time);
-        if (N % 2 == 0) {
-            int temp = array[0];
-            array[0] = array[N];
-            array[N] = temp;
-        } else {
-            int temp = array[i];
-            array[i] = array[N];
-            array[N] = temp;
-        }
+    for (int i = l; i <= k; i++) {
+        int temp = arr[l];
+        arr[l] = arr[i];
+        arr[i] = temp;
+
+        permutaciones(arr, l + 1, k, start, max_time);
+
+        temp = arr[l];
+        arr[l] = arr[i];
+        arr[i] = temp;
     }
 }
 
@@ -54,10 +51,9 @@ int main(int argc, char *argv[]) {
         array[i] = i + 1;
     }
 
-    int contador = 0;
     time_t start = time(NULL);
 
-    permutar(array, N - 1, &contador, start, M);
+    permutar(array, N-1, start, M);
     
     return 0;
 }
