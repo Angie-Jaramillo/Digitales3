@@ -2,14 +2,14 @@
 #include <stdlib.h>
 #include <time.h>
 
-void permutaciones(int arr[], int l, int k, time_t start, int max_time) { // l = indice actual, k = indice final
+void permutar(int arr[], int l, int k, time_t start, int max_time) { // l = indice actual, k = indice final
     if (difftime(time(NULL), start) >= max_time * 60) {
         return;
     }
 
     if (l == k) {
         for (int i = 0; i <= k; i++) {
-            pkintf("%d ", arr[i]);
+            printf("%d ", arr[i]);
         }
         printf("\n");
         return;
@@ -20,7 +20,7 @@ void permutaciones(int arr[], int l, int k, time_t start, int max_time) { // l =
         arr[l] = arr[i];
         arr[i] = temp;
 
-        permutaciones(arr, l + 1, k, start, max_time);
+        permutar(arr, l + 1, k, start, max_time);
 
         temp = arr[l];
         arr[l] = arr[i];
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 
     time_t start = time(NULL);
 
-    permutar(array, N-1, start, M);
+    permutar(array, 0, N-1, start, M);
     
     return 0;
 }
