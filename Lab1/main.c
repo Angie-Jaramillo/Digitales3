@@ -2,16 +2,24 @@
 #include <stdlib.h>
 #include <time.h>
 
-void permutar(int arr[], int l, int k, time_t start, int max_time) { // l = indice actual, k = indice final
-    if (difftime(time(NULL), start) >= max_time * 60) {
+void permutar(int arr[], int l, int k, time_t start, int max_time, long *Gracil) { // l = indice actual, k = indice final
+    if (difftime(clock(), start)/CLOCKS_PER_SEC >= max_time*60) {
+        printf("Se ha superado el tiempo maximo de ejecucion\n");
         return;
     }
 
     if (l == k) {
-        for (int i = 0; i <= k; i++) {
-            printf("%d ", arr[i]);
+        int gracil = 1;
+        for(int i = 0; i<k; i++){
+            for(int j = i+1; j<k; j++){
+                if (abs(arr[i] - arr[i + 1]) == abs(arr[j] - arr[j + 1])) {
+                    gracil = 0;
+                    break;
+                }
+            }
+            if(!gracil) break;
         }
-        printf("\n");
+        if(gracil) (*Gracil)++;
         return;
     }
 
@@ -20,7 +28,7 @@ void permutar(int arr[], int l, int k, time_t start, int max_time) { // l = indi
         arr[l] = arr[i];
         arr[i] = temp;
 
-        permutar(arr, l + 1, k, start, max_time);
+        permutar(arr, l + 1, k, start, max_time, Gracil);
 
         temp = arr[l];
         arr[l] = arr[i];
@@ -31,7 +39,7 @@ void permutar(int arr[], int l, int k, time_t start, int max_time) { // l = indi
 
 int main(int argc, char *argv[]) {
     if (argc != 3) { // Verifica que se ingresen los 3 valores de entrada
-        printf("No inrgeso los 3 valores de entrada\n");
+        printf("No ingreso los 2 valores de entrada\n");
         return 1;
     }
 
@@ -46,14 +54,25 @@ int main(int argc, char *argv[]) {
     }
 
     int array[N];
+    long graciles = 0;
 
     for (int i = 0; i < N; i++) {
         array[i] = i + 1;
     }
 
-    time_t start = time(NULL);
+    clock_t start = clock();
 
-    permutar(array, 0, N-1, start, M);
+    permutar(array, 0, N-1, start, M, &graciles);
+
+    clock_t end = clock(); // Tiempo al finalizar
+
+    // Calcula el tiempo transcurrido en minutos
+    double Tiempo_seg = ((double)(end - start) / CLOCKS_PER_SEC);
+
+    // Imprime los resultados
+    printf("Numero ingresado por el usuario: %d\n", N);
+    printf("Numero total de permutaciones graciles: %ld\n", graciles);
+    printf("Tiempo total de ejecucion: %.6f segundos\n", Tiempo_seg);
     
     return 0;
 }
