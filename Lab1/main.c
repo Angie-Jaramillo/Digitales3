@@ -2,24 +2,30 @@
 #include <stdlib.h>
 #include <time.h>
 
-void permutar(int arr[], int l, int k, time_t start, int max_time, long *Gracil) { // l = indice actual, k = indice final
+int ver_gracil(int arr[], int n) {
+    int diffs[n]; // Arreglo para marcar diferencias encontradas
+    for (int i = 0; i < n; i++) diffs[i] = 0; // Inicializamos en 0
+
+    for (int i = 0; i < n - 1; i++) {
+        int diff = abs(arr[i + 1] - arr[i]); // Calculamos la diferencia absoluta
+        if (diffs[diff]) { 
+            return 0; // Si la diferencia está fuera de rango o se repite, no es grácil
+        }
+        diffs[diff] = 1; // Marcamos la diferencia como encontrada
+    }
+    return 1; // Si todas las diferencias son únicas, es grácil
+}
+
+void permutar(int arr[], int l, int k, time_t start, int max_time, long *gracil) { // l = indice actual, k = indice final
     if (difftime(clock(), start)/CLOCKS_PER_SEC >= max_time*60) {
         printf("Se ha superado el tiempo maximo de ejecucion\n");
         return;
     }
 
-    if (l == k) {
-        int gracil = 1;
-        for(int i = 0; i<k; i++){
-            for(int j = i+1; j<k; j++){
-                if (abs(arr[i] - arr[i + 1]) == abs(arr[j] - arr[j + 1])) {
-                    gracil = 0;
-                    break;
-                }
-            }
-            if(!gracil) break;
+    if (l == k) { // Caso base: se generó una permutación completa
+        if (ver_gracil(arr, k + 1)) { // Verificar si la permutación es grácil
+            (*gracil)++;
         }
-        if(gracil) (*Gracil)++;
         return;
     }
 
@@ -28,7 +34,7 @@ void permutar(int arr[], int l, int k, time_t start, int max_time, long *Gracil)
         arr[l] = arr[i];
         arr[i] = temp;
 
-        permutar(arr, l + 1, k, start, max_time, Gracil);
+        permutar(arr, l + 1, k, start, max_time, gracil);
 
         temp = arr[l];
         arr[l] = arr[i];
