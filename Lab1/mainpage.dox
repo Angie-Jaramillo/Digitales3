@@ -1,0 +1,30 @@
+/*!
+\mainpage PERMUTACIONES GRÁCILES
+
+\section intro_sec Introducción
+
+Este programa calcula todas las permutaciones gráciles posibles de un conjunto de números de 1 a N, asegurándose de que las diferencias entre elementos adyacentes sean únicas. Además, el programa tiene un límite de tiempo configurable para evitar ejecuciones prolongadas.
+
+\section details_sec Uso
+Para ejecutar el programa, usa el siguiente comando en la terminal:
+@code
+./main <N> <M>
+@endcode
+Donde:
+- `<N>` es el número de elementos (1 < N < 50).
+- `<M>` es el tiempo máximo de ejecución en minutos.
+
+@section example_sec Ejemplo
+
+Ejemplo de ejecución con N = 5 y M = 2:
+@code
+./main 5 2
+@endcode
+
+\section author_sec Información de los Autores
+- **Autores**: Angie Paola Jaramillo Ortega, Juan Manuel Rivera Florez
+- **Asignatura**: Electrónica Digital 3
+- **Fecha**: 29/03/2025
+- **Versión**: 1.0
+
+*/
