@@ -36,6 +36,10 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(PIN_ENCODER), contarPulsos, RISING);
 
   pinMode(PIN_PWM, OUTPUT);
+  pinMode(14, OUTPUT);
+  analogWrite(14, HIGH);
+  pinMode(13, OUTPUT);
+  analogWrite(13, LOW);
   analogWriteFreq(FRECUENCIA_PWM);
   analogWriteResolution(RESOLUCION_PWM);
   analogWrite(PIN_PWM, 0);

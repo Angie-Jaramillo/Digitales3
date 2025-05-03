@@ -6,6 +6,8 @@
 void setup() {
   Serial.begin(115200);
   pinMode(PWM_PIN, OUTPUT);
+  pinMode(14, OUTPUT);
+  digitalWrite(14, HIGH);
 
   //Configurar la frecuencia y resolución del PWM
   analogWriteFreq(PWM_FREQ);
