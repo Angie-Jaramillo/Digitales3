@@ -51,7 +51,7 @@ def Start(value):
     while end:
         timer_elapsed = utime.ticks_diff(utime.ticks_ms(), timer_start)
         
-        if timer_elapsed >= 100:
+        if timer_elapsed >= 4:
             rpm = paso*60/20
             buff.append('{} {} {}\n'.format(utime.ticks_diff(utime.ticks_ms(), send_data),ref,rpm))
             paso = 0
