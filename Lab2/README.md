@@ -20,18 +20,6 @@ Por otro lado se tiene la misma implementación de funcionalidades en micropytho
 
 ## Detalles de cada módulo
 
-### 🔹 `lazo_abierto.ino`
-
-**Objetivo:**  
-Evaluar el comportamiento del motor sin retroalimentación, variando el ciclo PWM desde 0% hasta 100% en pasos de 10% cada 3 segundos, con un apagado final de 2 segundos.
-
-**Características:**
-- Control sin medición (lazo abierto).
-- PWM generado mediante `analogWrite()`.
-- No se realiza lectura de encoder.
-
----
-
 ### 🔹 `Read_RPM.ino`
 
 **Objetivo:**  
@@ -44,6 +32,19 @@ Estimar la velocidad del motor leyendo los pulsos del encoder cada segundo y cal
 
 
 ---
+### 🔹 `lazo_abierto.ino`
+
+**Objetivo:**  
+Evaluar el comportamiento del motor sin retroalimentación, variando el ciclo PWM desde 0% hasta 100% en pasos de 10% cada 3 segundos, con un apagado final de 2 segundos.
+
+**Características:**
+- Control sin medición (lazo abierto).
+- PWM generado mediante `analogWrite()`.
+- No se realiza lectura de encoder.
+
+---
+
+
 ### 🔹 `Curva.ino`
 
 **Objetivo:**
