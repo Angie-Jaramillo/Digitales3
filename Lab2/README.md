@@ -6,7 +6,7 @@ Este laboratorio implementa un sistema completo de control y medición de veloci
 
 ---
 
-## ⚙️ Archivos del Proyecto
+## Archivos del Proyecto
 
 | Archivo                | Descripción                                                                 |
 |------------------------|-----------------------------------------------------------------------------|
@@ -15,8 +15,9 @@ Este laboratorio implementa un sistema completo de control y medición de veloci
 | `implementacion.ino`   | Medición en lazo cerrado con control por comandos y captura de datos.       |
 
 ---
+Por otro lado se tiene la misma implementación de funcionalidades en micropython.
 
-## 🧾 Detalles de cada módulo
+## Detalles de cada módulo
 
 ### 🔹 `lazo_abierto.ino`
 
