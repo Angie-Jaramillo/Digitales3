@@ -1,18 +1,24 @@
 #define PIN_ENCODER           16
+
 #define PIN_PWM               15
+
 #define PULSOS_POR_VUELTA     20
 
 #define FRECUENCIA_PWM        250
-#define RESOLUCION_PWM        255
+
+#define RESOLUCION_PWM        8
 
 #define ESCALON_PORCENTAJE    20      // % de incremento por escalón
 
+// Cálculo de número de escalones
 #define NUM_ESCALONES_SUBIDA  6       
 #define NUM_ESCALONES_BAJADA  5
 #define TOTAL_ESCALONES       11      // 0, 20, 40, 60, 80, 100, 80, 60, 40, 20, 0
+
 #define MUESTRAS_POR_ESCALON  500
 
-const int MAX_MUESTRAS = TOTAL_ESCALONES * MUESTRAS_POR_ESCALON;
+const int MAX_MUESTRAS = TOTAL_ESCALONES * MUESTRAS_POR_ESCALON;//Tamaño máximo del buffer
+
 
 struct Buffer {
   unsigned long tiempo;
@@ -36,13 +42,14 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(PIN_ENCODER), contarPulsos, RISING);
 
   pinMode(PIN_PWM, OUTPUT);
-  pinMode(14, OUTPUT);
-  analogWrite(14, HIGH);
-  pinMode(13, OUTPUT);
-  analogWrite(13, LOW);
   analogWriteFreq(FRECUENCIA_PWM);
   analogWriteResolution(RESOLUCION_PWM);
   analogWrite(PIN_PWM, 0);
+
+  pinMode(14, OUTPUT);
+  pinMode(13, OUTPUT);
+  digitalWrite(14, HIGH);
+  digitalWrite(13, LOW);
 
   Serial.println("tiempo(ms),valor_pwm(%),RPM");
 }
@@ -68,7 +75,7 @@ void loop() {
     float rpm = (pulsos_por_segundo / PULSOS_POR_VUELTA) * 60.0;
     unsigned long tiempo_rel = tiempo_actual - tiempo_inicio;
 
-    //Determinar valor PWM actual según subida o bajada
+    //Determinar valor PWM actual según si es ascendente o descendente
     uint8_t porcentaje_pwm;
     if (escalon_actual < NUM_ESCALONES_SUBIDA) {
 
@@ -80,7 +87,7 @@ void loop() {
 
     }
 
-    uint8_t valor_pwm = map(porcentaje_pwm, 0, 100, 0, RESOLUCION_PWM);
+    uint8_t valor_pwm = map(porcentaje_pwm, 0, 100, 0, 255);
     analogWrite(PIN_PWM, valor_pwm);
 
     datos[buffIndex++] = {tiempo_rel, valor_pwm, rpm }; //Almacenar datos
@@ -119,10 +126,8 @@ void loop() {
         porcentaje_pwm = (TOTAL_ESCALONES - escalon_actual) * ESCALON_PORCENTAJE;
 
       }
-      int valor_pwm = map(porcentaje_pwm, 0, 100, 0, RESOLUCION_PWM);
+      int valor_pwm = map(porcentaje_pwm, 0, 100, 0, 255);
       analogWrite(PIN_PWM, valor_pwm);
-  }
+    }
   }
 }
-
-
