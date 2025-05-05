@@ -45,7 +45,7 @@ def Start(value):
     timer_start = utime.ticks_ms()
     Move(reftoPWM(ref))
 
-    while end:
+    while True:
         timer_elapsed = utime.ticks_diff(utime.ticks_ms(), timer_start)
         
         if timer_elapsed >= 500:
