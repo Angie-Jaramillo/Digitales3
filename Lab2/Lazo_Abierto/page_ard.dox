@@ -1,0 +1,14 @@
+/**
+ * @file lazo_abierto.ino
+ * @brief Control de velocidad en lazo abierto mediante modulación por ancho de pulso (PWM).
+ *
+ * Este programa incrementa el ciclo de trabajo del PWM desde 0% hasta 100% en pasos de 10%,
+ * manteniendo cada valor por 3 segundos. Luego, apaga el motor por 2 segundos. 
+ * El objetivo es observar el comportamiento del sistema en lazo abierto.
+ *
+ * @author Angie Paola Jaramillo Ortega
+            Juan Manuel Rivera Florez
+
+
+ * @date 04-05-2025
+ */

@@ -1,0 +1,27 @@
+/*!
+\page page_pwm_rpm Medición de RPM de un motor con secuencia de PWM escalonada (Arduino)
+
+\section intro_sec Descripción
+Este proyecto implementa un sistema de control y medición de la velocidad (RPM) de un motor DC 
+utilizando una señal PWM escalonada. El sistema genera una secuencia de 11 escalones de PWM (subida y bajada), 
+cada uno con una duración de 2 segundos, y toma muestras cada 4 ms. La velocidad del motor se mide con 
+un encoder conectado a una interrupción externa. Todos los datos (tiempo, valor PWM y RPM) se almacenan 
+en un buffer y se envían por el puerto serial al finalizar la secuencia.
+
+Este código está diseñado para ejecutarse en una placa Arduino compatible.
+
+\section features_sec Funcionalidades principales
+- Generación de PWM con resolución de 8 bits y frecuencia configurable.
+- Secuencia escalonada de PWM con incrementos definidos por porcentaje.
+- Medición de RPM basada en el conteo de pulsos del encoder.
+- Registro de muestras periódicas en un buffer.
+- Envío de datos por puerto serial para análisis posterior.
+
+\section author_sec Información de los Autores
+- **Autores**: Angie Paola Jaramillo Ortega, Juan Manuel Rivera Florez
+- **Asignatura**: Electrónica Digital 3
+- **Fecha**: 04/05/2025
+- **Versión**: 1.0
+
+
+*/

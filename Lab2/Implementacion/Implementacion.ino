@@ -1,24 +1,48 @@
-#define PIN_ENCODER           16
-#define PIN_PWM               15
-#define PULSOS_POR_VUELTA     20
-#define FRECUENCIA_PWM        250
-#define RESOLUCION_PWM        8
+/**
+ * @file Implementacion.ino
+ * 
+ * @brief Medición de RPM con control PWM escalonado en Arduino
+ * 
+ *  Este archivo contiene la implementación de un sistema para medir las revoluciones por minuto (RPM) de un motor DC utilizando un encoder y una señal PWM que se incrementa en escalones. Los datos se registran y se envían por el puerto serial para análisis posterio
+ * 
+ * 
+ * 
+ * 
+ */
+
+
+
+
+#define PIN_ENCODER           16    // Pin del encoder
+#define PIN_PWM               15    // Pin del PWM  
+#define PULSOS_POR_VUELTA     20    // Pulsos por vuelta del encoder
+#define FRECUENCIA_PWM        250   // Frecuencia del PWM en Hz
+#define RESOLUCION_PWM        8     // Resolución del PWM en bits
 
 #define MAX_MUESTRAS          20000  // máximo permitido
 
+/**
+ * @brief Estructura para almacenar los datos de cada muestra
+ * 
+ */
 struct Buffer {
   unsigned long tiempo;
   uint8_t valor_pwm;
   float rpm;
 };
 
-Buffer datos[MAX_MUESTRAS];
+Buffer datos[MAX_MUESTRAS];   // Buffer para almacenar los datos de las muestras
 
-volatile int conteo_pulsos = 0;
+volatile int conteo_pulsos = 0;   // Contador de pulsos del encoder
 
-enum Estado { WAIT, MANUAL, CAPTURA };
-Estado estado = WAIT;
 
+/**
+ * @brief Enumeración para los estados del sistema
+ */
+enum Estado { WAIT, MANUAL, CAPTURA };    
+
+Estado estado = WAIT;   // Estado inicial del sistema 
+    
 uint8_t PWM_CYCLE = 0;
 unsigned long tiempo_ultima_muestra = 0;
 unsigned long tiempo_ultimo_reporte = 0;
@@ -30,10 +54,20 @@ int escalon_actual = 0;
 int TOTAL_ESCALONES = 0;
 int ESCALON_PORCENTAJE = 20;
 
+
+/**
+ * @brief Función de interrupción para contar los pulsos del encoder
+ * 
+ */
 void contarPulsos() {
   conteo_pulsos++;
 }
 
+/**
+ * @brief Función de configuración inicial
+ * 
+ * Configura los pines, la frecuencia y resolución del PWM, y establece la comunicación serial.
+ */
 void setup() {
   Serial.begin(115200);
   pinMode(PIN_ENCODER, INPUT_PULLUP);
@@ -47,6 +81,11 @@ void setup() {
   Serial.println("Listo. Use START <paso> o PWM <valor>");
 }
 
+/**
+ * @brief Función principal del programa
+ * 
+ * En esta función se manejan los estados del sistema, se leen los comandos por USB y se realizan las mediciones.
+ */
 void loop() {
   unsigned long tiempo_actual = millis();
 
