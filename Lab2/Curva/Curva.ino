@@ -1,7 +1,7 @@
 /**
  * @file Curva.ino
  * 
- * @brief Controla un moyor con un PWM en escalones, mide la velocidad en RPM usando un encoder optimo y almacena los datos para su analisis posterior
+ * @brief Controla un motor con un PWM en escalones, mide la velocidad en RPM usando un encoder optimo y almacena los datos para su analisis posterior, generando la curva de respuesta del sistema.
  * 
  * 
  * Este archivo contiene la implementación de un sistema para medir las revoluciones por minuto (RPM) de un motor DC utilizando un encoder y una señal PWM que se incrementa en escalones. Los datos se registran y se envían por el puerto serial para análisis posterior.

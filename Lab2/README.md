@@ -13,6 +13,7 @@ Este laboratorio implementa un sistema completo de control y medición de veloci
 | `lazo_abierto.ino`     | Control de velocidad en lazo abierto con PWM escalonado de 0% a 100%.       |
 | `Read_RPM.ino`         | Lectura de pulsos de encoder y estimación de RPM en tiempo real.            |
 | `implementacion.ino`   | Medición en lazo cerrado con control por comandos y captura de datos.       |
+| `curva.ino` | Captura la curva de reacción de un motor DC |
 
 ---
 Por otro lado se tiene la misma implementación de funcionalidades en micropython.
@@ -40,6 +41,21 @@ Estimar la velocidad del motor leyendo los pulsos del encoder cada segundo y cal
 - Interrupciones para contar pulsos.
 - Buffer de 5 segundos para promediar.
 - Cálculo de RPM basado en pulsos y `PulsosPorVuelta`.
+
+
+---
+### 🔹 `Curva.ino`
+
+**Objetivo:**
+Controlar un motor con un PWM en escalones, mide la velocidad en RPM usando un encoder optimo y almacena los datos para su analisis posterior, generando la curva de respuesta del sistema.
+
+**Caracteristicas:**
+
+- **Secuencia PWM:** 11 pasos (0% a 100% y de vuelta a 0%)  
+- **Muestreo:** cada 4 ms  
+- **Cambio de paso:** cada 2 s  
+- **Variables medidas:** tiempo (ms), PWM (%), RPM  
+
 
 ---
 
