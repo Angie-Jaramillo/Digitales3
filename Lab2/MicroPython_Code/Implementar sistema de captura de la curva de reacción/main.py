@@ -11,7 +11,7 @@ l_pwm = machine.PWM(machine.Pin(17), 20000, duty_u16=0)
 enable = machine.Pin(18, machine.Pin.OUT)
 enable.on()
 
-encoder = machine.Pin(22, machine.Pin.IN)
+encoder = machine.Pin(19, machine.Pin.IN)
 
 def encoder_handler(pin):
     global paso
@@ -41,7 +41,7 @@ def Start(value):
     rpm = 0
     direc = 1
     end = True
-    buff = ['Tiempo(ms), Duty(%), RPM']
+    buff = []
     
     send_data = utime.ticks_ms()
     chang_ref = utime.ticks_ms()
@@ -51,9 +51,9 @@ def Start(value):
     while end:
         timer_elapsed = utime.ticks_diff(utime.ticks_ms(), timer_start)
         
-        if timer_elapsed >= 10:
+        if timer_elapsed >= 4:
             rpm = paso*60/20
-            buff.append('{}, {}, {}'.format(utime.ticks_diff(utime.ticks_ms(), send_data),ref,rpm))
+            buff.append('{} {} {}\n'.format(utime.ticks_diff(utime.ticks_ms(), send_data),ref,rpm))
             paso = 0
             timer_start = utime.ticks_ms()       
         

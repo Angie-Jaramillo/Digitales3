@@ -14,7 +14,7 @@ l_pwm = machine.PWM(machine.Pin(17), 20000, duty_u16=0)
 enable = machine.Pin(18, machine.Pin.OUT)
 enable.on()
 
-encoder = machine.Pin(22, machine.Pin.IN)
+encoder = machine.Pin(19, machine.Pin.IN)
 
 #Funciones
 

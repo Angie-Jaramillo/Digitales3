@@ -1,3 +1,14 @@
+
+#define PIN_ENCODER           16
+
+#define PIN_PWM               15
+
+#define PULSOS_POR_VUELTA     20
+
+#define FRECUENCIA_PWM        250
+
+#define RESOLUCION_PWM        8
+=======
 /**
  * @file Curva.ino
  * 
@@ -29,8 +40,12 @@
 #define ESCALON_PORCENTAJE    20      // % de incremento por escalón
 
 // Cálculo de número de escalones
+#define NUM_ESCALONES_SUBIDA  6       
+#define NUM_ESCALONES_BAJADA  5
+=======
 #define NUM_ESCALONES_SUBIDA  6       //> Número de escalones de subida  
 #define NUM_ESCALONES_BAJADA  5       //> Número de escalones de bajada
+
 #define TOTAL_ESCALONES       11      // 0, 20, 40, 60, 80, 100, 80, 60, 40, 20, 0
 
 #define MUESTRAS_POR_ESCALON  500
@@ -81,13 +96,14 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(PIN_ENCODER), contarPulsos, RISING);
 
   pinMode(PIN_PWM, OUTPUT);
-  pinMode(14, OUTPUT);
-  analogWrite(14, HIGH);
-  pinMode(13, OUTPUT);
-  analogWrite(13, LOW);
   analogWriteFreq(FRECUENCIA_PWM);
   analogWriteResolution(RESOLUCION_PWM);
   analogWrite(PIN_PWM, 0);
+
+  pinMode(14, OUTPUT);
+  pinMode(13, OUTPUT);
+  digitalWrite(14, HIGH);
+  digitalWrite(13, LOW);
 
   Serial.println("tiempo(ms),valor_pwm(%),RPM");
 }
@@ -168,6 +184,4 @@ void loop() {
       analogWrite(PIN_PWM, valor_pwm);
     }
   }
-}
-
 
