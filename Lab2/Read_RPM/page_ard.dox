@@ -1,0 +1,13 @@
+/**
+ * @file Read_RPM.ino
+ * @brief Lectura de pulsos de un encoder para estimar la velocidad (RPM)
+ *
+ * Este programa cuenta los pulsos de un encoder conectado a un pin digital y calcula la velocidad en revoluciones por minuto (RPM) cada segundo.
+
+ *
+ * @author Angie Paola Jaramillo Ortega
+            Juan Manuel Rivera Florez
+
+
+ * @date 04-05-2025
+ */

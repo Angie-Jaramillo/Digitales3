@@ -1,0 +1,26 @@
+/*!
+\mainpage Sistema de Medición de RPM con PWM Escalonado (Arduino)
+
+\section descripcion_sec Descripción general
+Este proyecto implementa un sistema de medición de la velocidad angular (RPM) de un motor DC mediante un encoder, 
+controlando su entrada con una señal PWM escalonada. El sistema permite el control en modo manual y automático 
+(captura), y registra las muestras obtenidas para su posterior análisis a través de comunicación serial.
+
+El usuario puede iniciar la captura de datos con el comando `START <porcentaje>` o ajustar manualmente el valor 
+de PWM con `PWM <valor>` a través del monitor serial.
+
+\section caracteristicas_sec Características
+- Generación de señales PWM con resolución y frecuencia definidas.
+- Interfaz serial para recibir comandos y transmitir datos.
+- Medición de RPM basada en pulsos de encoder.
+- Muestreo periódico cada 4 ms y cambio de escalón cada 2 segundos.
+- Registro de datos en un buffer estructurado.
+- Soporte para modo manual y modo de captura automática.
+
+\section autores_sec Información de los autores
+- **Autores**: Angie Paola Jaramillo Ortega, Juan Manuel Rivera Florez
+- **Asignatura**: Electrónica Digital 3  
+- **Fecha**: 04/05/2025  
+- **Versión**: 1.0  
+
+*/

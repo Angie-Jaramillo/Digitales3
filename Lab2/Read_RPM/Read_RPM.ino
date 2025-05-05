@@ -1,22 +1,51 @@
-#define PulsosPorVuelta (20)
-#define ENCONDER_PIN (16)
+/**
+ * @file Read_RPM.ino
+ * 
+ * @brief  Lectura de pulsos de un encoder para estimar la velocidad (RPM)
+ * 
+ * Este programa cuenta los pulsos de un encoder conectado a un pin digital y calcula la velocidad en revoluciones por minuto (RPM) cada segundo.
+ * 
+ * @authors Angie Paola Jaramillo Ortega,
+ *         Juan Manuel Rivera Florez
+ * 
+ * @date 04-05-2025
+ * 
+ * @version 1.0
+ * 
+ */
+
+
+#define PulsosPorVuelta (20)  // Pulsos por vuelta del encoder
+#define ENCONDER_PIN (16)     // Pin del encoder
 
 // struct DataPoint {
 //   // unsigned long timepo_ms;
 //   int pulsosPorSegundo;
 // };
 
-const int bufferSize = 5;  // Guardamos datos por 5 segundos
-int dataBuffer[bufferSize];
-int bufferIndex = 0;
+const int bufferSize = 5;     // Guardamos datos por 5 segundos
+int dataBuffer[bufferSize];   // Buffer para almacenar los datos
+int bufferIndex = 0;          // Índice del buffer
 
-volatile int contadorPulsos = 0;
-unsigned long tiempoAnterior  = 0;
+volatile int contadorPulsos = 0;    // Contador de pulsos del encoder
+unsigned long tiempoAnterior  = 0;  // Variable para almacenar el tiempo anterior
 
+/**
+ * @brief Función de interrupción para contar los pulsos del encoder
+ * 
+ * Esta función se ejecuta cada vez que se detecta un pulso en el pin del encoder.
+ * Incrementa el contador de pulsos.
+ */
 void contarPulsos() {
   contadorPulsos++;
 }
 
+
+/**
+ * @brief Función de configuración inicial
+ * 
+ * Configura los pines, la frecuencia y resolución del PWM, y establece la comunicación serial.
+ */
 void setup() {
   Serial.begin(115200);
   pinMode(ENCONDER_PIN, INPUT_PULLUP);
@@ -24,6 +53,11 @@ void setup() {
   tiempoAnterior = millis();
 }
 
+/**
+ * @brief Función principal del programa
+ * 
+ * En esta función se manejan los estados del sistema, se leen los comandos por USB y se realizan las mediciones.
+ */
 void loop() {
   unsigned long tiempoActual = millis();
 

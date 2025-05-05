@@ -1,3 +1,4 @@
+
 #define PIN_ENCODER           16
 
 #define PIN_PWM               15
@@ -7,34 +8,87 @@
 #define FRECUENCIA_PWM        250
 
 #define RESOLUCION_PWM        8
+=======
+/**
+ * @file Curva.ino
+ * 
+ * @brief Controla un motor con un PWM en escalones, mide la velocidad en RPM usando un encoder optimo y almacena los datos para su analisis posterior, generando la curva de respuesta del sistema.
+ * 
+ * 
+ * Este archivo contiene la implementación de un sistema para medir las revoluciones por minuto (RPM) de un motor DC utilizando un encoder y una señal PWM que se incrementa en escalones. Los datos se registran y se envían por el puerto serial para análisis posterior.
+ * 
+ * @authors Angie Paola Jaramillo Ortega,
+ *          Juan Manuel Rivera Florez
+ * 
+ * @date 04/05/2025
+ * 
+ * @version 1.0
+ * 
+ * 
+ */
+
+#define PIN_ENCODER           16      //> Pin del encoder
+
+#define PIN_PWM               15      //> Pin del PWM
+
+#define PULSOS_POR_VUELTA     20      //> Pulsos por vuelta del encoder
+
+#define FRECUENCIA_PWM        250     //> Frecuencia del PWM en Hz
+
+#define RESOLUCION_PWM        8       //> Resolución del PWM en bits
 
 #define ESCALON_PORCENTAJE    20      // % de incremento por escalón
 
 // Cálculo de número de escalones
 #define NUM_ESCALONES_SUBIDA  6       
 #define NUM_ESCALONES_BAJADA  5
+=======
+#define NUM_ESCALONES_SUBIDA  6       //> Número de escalones de subida  
+#define NUM_ESCALONES_BAJADA  5       //> Número de escalones de bajada
+
 #define TOTAL_ESCALONES       11      // 0, 20, 40, 60, 80, 100, 80, 60, 40, 20, 0
 
 #define MUESTRAS_POR_ESCALON  500
 
 const int MAX_MUESTRAS = TOTAL_ESCALONES * MUESTRAS_POR_ESCALON;//Tamaño máximo del buffer
 
-
+/**
+ * @brief Estructura para almacenar los datos de cada muestra
+ */
 struct Buffer {
   unsigned long tiempo;
   uint8_t valor_pwm;
   float rpm;
 };
 
+/**
+ * @var datos
+ * @brief Buffer para almacenar los datos de las muestras
+ */
 Buffer datos[MAX_MUESTRAS];
+
+/**
+ * @var buffIndex
+ * @brief Índice del buffer de datos
+ */
 int buffIndex = 0;
 
+/**
+ * @var conteo_pulsos
+ * @brief Contador de pulsos del encoder
+ */
 volatile int conteo_pulsos = 0;
 
+/**
+ * @brief Función de interrupción para contar los pulsos del encoder
+ */
 void contarPulsos() {
   conteo_pulsos++;
 }
 
+/**
+ * @brief Función de configuración inicial
+ */
 void setup() {
   Serial.begin(115200);
 
@@ -130,4 +184,4 @@ void loop() {
       analogWrite(PIN_PWM, valor_pwm);
     }
   }
-}
+
