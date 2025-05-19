@@ -46,7 +46,8 @@ pico_enable_stdio_usb(Lazo_abierto 1)
 
 # Add the standard library to the build
 target_link_libraries(Lazo_abierto
-        pico_stdlib)
+        pico_stdlib
+        hardware_pwm)
 
 # Add the standard include files to the build
 target_include_directories(Lazo_abierto PRIVATE
