@@ -37,7 +37,7 @@ int main() {
             float rpm = (contador_pulsos * 1000.0f / INTERVALO_MS) * (60.0f / PULSOS_POR_VUELTA);
 
             // Mostrar por consola
-            printf("Pulsos: %lu  RPM: %.2f\n", contador_pulsos, rpm);
+            printf("RPM: %.2f\n", contador_pulsos, rpm);
 
             // Reiniciar contador y tiempo
             contador_pulsos = 0;
