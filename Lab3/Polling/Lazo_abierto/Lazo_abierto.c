@@ -8,7 +8,7 @@
 
 #define FREQ 10000
 #define half_duty 70
-#define TIEMPO_ESCALON_MS 5000 
+#define TIEMPO_ESCALON_MS 1000 
 
 #ifndef SYS_CLK_KHZ
     #define SYS_CLK_KHZ 125000  // 125 MHz
@@ -47,19 +47,17 @@ int main()
     int duty = 0;
     absolute_time_t tiempo_anterior = get_absolute_time();
 
-
-    while (duty <= 100) {
-        absolute_time_t ahora = get_absolute_time();
-        if (absolute_time_diff_us(tiempo_anterior, ahora) >= TIEMPO_ESCALON_MS * 1000) {
-            pwm_set_chan_level(slice_num, channel_num, duty);  // aplicar nuevo duty
-            printf("DUTY = %d%%\n", duty);              // mostrar por consola
-            duty+=1;
-            tiempo_anterior = ahora;                  // reiniciar temporizador
+    while(1){
+        while (duty <= 100) {
+            absolute_time_t ahora = get_absolute_time();
+            if (absolute_time_diff_us(tiempo_anterior, ahora) >= TIEMPO_ESCALON_MS * 1000) {
+                pwm_set_chan_level(slice_num, channel_num, duty);  // aplicar nuevo duty
+                printf("DUTY = %d%%\n", duty);              // mostrar por consola
+                duty+=1;
+                tiempo_anterior = ahora;                  // reiniciar temporizador
+            }
         }
+        duty= 0;
     }
-    while (1) {
-        tight_loop_contents();  // mantiene vivo el programa
-    }
-
-    return 0;  // Nunca se alcanzará
+    return 0;
 }
