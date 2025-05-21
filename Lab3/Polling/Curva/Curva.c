@@ -7,14 +7,16 @@
 #define IN1         16
 #define IN2         17
 
-#define PULSOS_POR_VUELTA 20
-#define WRAP 100
-#define FREQ_PWM 10000
-
-#define ESCALON_PORCENTAJE 20
-#define TIEMPO_ESCALON_MS 2000
-#define TIEMPO_MUESTREO_MS 4
-#define MAX_DATOS 5000
+#define CPR                 20    // Pulsos por vuelta
+#define FREQ_PWM            10000
+#define WRAP                100
+#define ESCALON_PORCENTAJE  20
+#define TIEMPO_ESCALON_MS   2000
+#define TIEMPO_MUESTREO_MS  50
+#define MAX_MUESTRAS        5000
+#ifndef SYS_CLK_KHZ
+    #define SYS_CLK_KHZ     125000  // 125 MHz
+#endif
 
 typedef struct {
     uint32_t tiempo_ms;
@@ -22,87 +24,105 @@ typedef struct {
     float rpm;
 } muestra_t;
 
-muestra_t datos[MAX_DATOS];
-uint32_t indice_datos = 0;
+muestra_t buffer[MAX_MUESTRAS];
+uint32_t indice = 0;
 
 int main() {
     stdio_init_all();
 
-    // Dirección fija del motor
-    gpio_init(IN1); gpio_set_dir(IN1, GPIO_OUT); gpio_put(IN1, 1);
-    gpio_init(IN2); gpio_set_dir(IN2, GPIO_OUT); gpio_put(IN2, 0);
+    // Configurar pines de dirección (L298N)
+    gpio_init(IN1);
+    gpio_set_dir(IN1, GPIO_OUT);
+    gpio_put(IN1, 1);
+
+    gpio_init(IN2);
+    gpio_set_dir(IN2, GPIO_OUT);
+    gpio_put(IN2, 0);
 
     // Configurar PWM
     gpio_set_function(PIN_PWM, GPIO_FUNC_PWM);
     uint slice = pwm_gpio_to_slice_num(PIN_PWM);
-    uint chan = pwm_gpio_to_channel(PIN_PWM);
-    float clkdiv = 125000000.0f / ((WRAP + 1) * FREQ_PWM);
-    if (clkdiv < 1.0f) clkdiv = 1.0f;
+    uint chan  = pwm_gpio_to_channel(PIN_PWM);
+
+    float divider = (SYS_CLK_KHZ * 1000.0f) / (FREQ_PWM * WRAP);
+    if (divider < 1.0f) divider = 1.0f;
+    if (divider > 255.0f) divider = 255.0f;
+
     pwm_config cfg = pwm_get_default_config();
-    pwm_config_set_clkdiv(&cfg, clkdiv);
+    pwm_config_set_clkdiv(&cfg, divider);
     pwm_config_set_wrap(&cfg, WRAP);
-    pwm_init(slice, &cfg, false);
-    pwm_set_enabled(slice, true);
+    pwm_init(slice, &cfg, true);
 
     // Configurar encoder
     gpio_init(PIN_ENCODER);
     gpio_set_dir(PIN_ENCODER, GPIO_IN);
     gpio_pull_up(PIN_ENCODER);
 
-    bool flanco_anterior = false;
-    uint32_t contador_pulsos = 0;
+    bool flanco_anterior = gpio_get(PIN_ENCODER);
+    volatile uint32_t pulsos = 0;
 
-    absolute_time_t tiempo_inicio = get_absolute_time();
-    absolute_time_t tiempo_muestreo = get_absolute_time();
+    absolute_time_t t_inicio = get_absolute_time();
+    absolute_time_t t_muestreo = get_absolute_time();
+    absolute_time_t t_escalon = get_absolute_time();
 
-    printf("Captura de curva de reacción\n");
+    int pwm_actual = 0;
+    int paso = ESCALON_PORCENTAJE;
+    bool bajando = false;
 
-    // Secuencia de escalones: 0 → 20 → ... → 100 → 80 → ... → 0
-    for (int etapa = 0; etapa < 2; etapa++) {
-        int inicio = etapa == 0 ? 0 : 100 - ESCALON_PORCENTAJE;
-        int fin    = etapa == 0 ? 100 : 0;
-        int paso   = etapa == 0 ? ESCALON_PORCENTAJE : -ESCALON_PORCENTAJE;
-
-        for (int pwm_val = inicio; (etapa == 0 ? pwm_val <= fin : pwm_val >= fin); pwm_val += paso) {
-            pwm_set_chan_level(slice, chan, pwm_val);
-            absolute_time_t t0 = get_absolute_time();
-            tiempo_muestreo = t0;
-            contador_pulsos = 0;
-
-            while (absolute_time_diff_us(t0, get_absolute_time()) < TIEMPO_ESCALON_MS * 1000) {
-                // Leer encoder por polling
-                bool flanco_actual = gpio_get(PIN_ENCODER);
-                if (flanco_actual && !flanco_anterior) {
-                    contador_pulsos++;
-                }
-                flanco_anterior = flanco_actual;
-
-                // Verificar si toca muestrear
-                if (absolute_time_diff_us(tiempo_muestreo, get_absolute_time()) >= TIEMPO_MUESTREO_MS * 1000) {
-                    // Calcular RPM
-                    float rpm = (contador_pulsos * 1000.0f / TIEMPO_MUESTREO_MS) * (60.0f / PULSOS_POR_VUELTA);
-                    contador_pulsos = 0;
-
-                    uint32_t tiempo_rel = to_ms_since_boot(get_absolute_time()) - to_ms_since_boot(tiempo_inicio);
-
-                    if (indice_datos < MAX_DATOS) {
-                        datos[indice_datos++] = (muestra_t){tiempo_rel, pwm_val, rpm};
-                    }
-
-                    tiempo_muestreo = get_absolute_time();
-                }
-            }
-        }
-    }
-
-    // Imprimir resultados en formato CSV
-    printf("tiempo_ms,pwm,rpm\n");
-    for (uint32_t i = 0; i < indice_datos; i++) {
-        printf("%u,%u,%.2f\n", datos[i].tiempo_ms, datos[i].pwm, datos[i].rpm);
-    }
+    pwm_set_chan_level(slice, chan, pwm_actual);
 
     while (1) {
+
+        bool flanco_actual = gpio_get(PIN_ENCODER);
+        if (flanco_actual && !flanco_anterior) {
+            pulsos++;
+        }
+        flanco_anterior = flanco_actual;
+
+        // 2. Muestreo: medir cada 4 ms cuánto tiempo realmente pasó
+        absolute_time_t t_ahora = get_absolute_time();
+        int64_t delta_us = absolute_time_diff_us(t_muestreo, t_ahora);
+        if (delta_us >= TIEMPO_MUESTREO_MS * 1000) {
+            float delta_ms = delta_us / 1000.0f;
+
+            // RPM = (pulsos / CPR) / (delta_ms / 60000)
+            float rpm = ((float)pulsos / CPR) * (60000.0f / delta_ms);
+            pulsos = 0;
+
+            if (indice < MAX_MUESTRAS) {
+                buffer[indice].tiempo_ms = to_ms_since_boot(t_ahora) - to_ms_since_boot(t_inicio);
+                buffer[indice].pwm = pwm_actual;
+                buffer[indice].rpm = rpm;
+                indice++;
+            }
+
+            t_muestreo = t_ahora;
+        }
+
+        // 3. Cambio de escalón cada 2 s
+        if (absolute_time_diff_us(t_escalon, get_absolute_time()) >= TIEMPO_ESCALON_MS * 1000) {
+            pwm_actual += bajando ? -paso : paso;
+            if (pwm_actual >= 100) {
+                pwm_actual = 100;
+                bajando = true;
+            } else if (pwm_actual <= 0 && bajando) {
+                pwm_actual = 0;
+                break; // Fin de la captura
+            }
+
+            pwm_set_chan_level(slice, chan, pwm_actual);
+            t_escalon = get_absolute_time();
+        }
+
+        tight_loop_contents();
     }
 
+    // Imprimir resultados como CSV
+    printf("tiempo_ms,pwm,rpm\n");
+    for (uint32_t i = 0; i < indice; i++) {
+        printf("%u,%u,%.2f\n", buffer[i].tiempo_ms, buffer[i].pwm, buffer[i].rpm);
+    }
+
+    while (1) {}  // mantener el programa activo
     return 0;
 }

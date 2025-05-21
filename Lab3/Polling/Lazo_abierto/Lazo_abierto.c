@@ -7,7 +7,6 @@
 #define IN2 17
 
 #define FREQ 10000
-#define half_duty 70
 #define TIEMPO_ESCALON_MS 1000 
 
 #ifndef SYS_CLK_KHZ
