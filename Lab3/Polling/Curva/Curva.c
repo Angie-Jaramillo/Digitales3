@@ -79,13 +79,12 @@ int main() {
         }
         flanco_anterior = flanco_actual;
 
-        // 2. Muestreo: medir cada 4 ms cuánto tiempo realmente pasó
+        // 2. Muestreo cada 50ms
         absolute_time_t t_ahora = get_absolute_time();
         int64_t delta_us = absolute_time_diff_us(t_muestreo, t_ahora);
         if (delta_us >= TIEMPO_MUESTREO_MS * 1000) {
             float delta_ms = delta_us / 1000.0f;
 
-            // RPM = (pulsos / CPR) / (delta_ms / 60000)
             float rpm = ((float)pulsos / CPR) * (60000.0f / delta_ms);
             pulsos = 0;
 
