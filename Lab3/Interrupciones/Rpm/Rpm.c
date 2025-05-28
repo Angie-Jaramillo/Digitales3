@@ -15,6 +15,8 @@
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
 #include "hardware/clocks.h"
+#include "hardware/irq.h"
+#include "hardware/gpio.h"
 
 typedef struct {
     uint32_t    tiempo_ms;
@@ -22,7 +24,7 @@ typedef struct {
     uint32_t    rpm;
 } muestra_t;
 
-muestra_t buffer[20000];
+muestra_t buffer[4500];
 uint16_t bufferIndex = 0;
 
 const uint8_t encoder_pin = 14;
@@ -56,6 +58,13 @@ bool pwm_timer_callback(struct repeating_timer *t);
 int main()
 {
     stdio_init_all();
+
+    gpio_init(encoder_pin);
+    gpio_set_dir(encoder_pin, GPIO_IN);
+    gpio_pull_up(encoder_pin);
+    // gpio_set_irq_enabled_with_callback(encoder_pin, GPIO_IRQ_EDGE_RISE, true, &encoder_callback);
+    gpio_set_irq_enabled(encoder_pin, GPIO_IRQ_EDGE_RISE, true);
+    gpio_set_irq_callback(&encoder_callback);
     
     gpio_init(Enable_motor_pin);
     gpio_set_dir(Enable_motor_pin, GPIO_OUT);
@@ -73,15 +82,10 @@ int main()
     pwm_init(slice_num, &config, true);
     pwm_set_gpio_level(IN1_pin, 0);
     pwm_set_gpio_level(IN2_pin, 0);
-    
-    gpio_init(encoder_pin);
-    gpio_set_dir(encoder_pin, GPIO_IN);
-
-    gpio_set_irq_enabled_with_callback(encoder_pin, GPIO_IRQ_EDGE_RISE, true, &encoder_callback);
 
     char input[32];
 
-    Start(20);
+    //Start(20);
 
     while (true) {
 
@@ -120,19 +124,27 @@ int main()
 
 bool sample_timer_callback(struct repeating_timer *t) {
 
-    rpm = (counter * 60) / (4*20);
-    counter = 0;
+    if(t == &timer_rpm) {
+        // Calcular RPM cada 100 ms
+        uint32_t current_time = time_us_32() / 1000; // Convertir a milisegundos
+        rpm = (counter * 60) / 20; // RPM = (pulsos por minuto) / 20 ms
+        //printf("%u\n", counter);
+        counter = 0; // Reiniciar contador
 
-    buffer[bufferIndex].tiempo_ms = time_us_32()/1000;
-    buffer[bufferIndex].pwm = ref;
-    buffer[bufferIndex].rpm = rpm;
-    bufferIndex++;
-
+        buffer[bufferIndex].tiempo_ms = current_time;
+        buffer[bufferIndex].pwm = ref;
+        buffer[bufferIndex].rpm = rpm;
+        bufferIndex++;
+        
+    }
+    
     return true; // Keep the timer running
 }
 
 void encoder_callback(uint gpio, uint32_t events) {
-    counter++;
+    if(events == GPIO_IRQ_EDGE_RISE) {
+        counter++;
+    }
 }
 
 void move(uint16_t u)
@@ -172,9 +184,9 @@ void Start(uint16_t valor)
 
     value = valor;
 
-    add_repeating_timer_ms(4, sample_timer_callback, NULL, &timer_rpm);
+    add_repeating_timer_ms(-4, sample_timer_callback, NULL, &timer_rpm);
  
-    add_repeating_timer_ms(3000, ref_timer_callback, NULL, &change_ref);
+    add_repeating_timer_ms(-3000, ref_timer_callback, NULL, &change_ref);
 
     while (ref<=100)
     {
@@ -185,10 +197,12 @@ void Start(uint16_t valor)
     cancelled = cancel_repeating_timer(&change_ref);
     move(0);
     
-    for (int i = 0; i < 20000; i++) {
+    for (int i = 0; i < 4500; i++) {
         printf("%u %u %u\n", buffer[i].tiempo_ms, buffer[i].pwm, buffer[i].rpm);
     }
     memset(buffer, 0, sizeof(buffer));
+    bufferIndex = 0;
+    ref = 0;
 }
 
 int reftoPWM(uint16_t ref)
@@ -199,13 +213,13 @@ int reftoPWM(uint16_t ref)
 
 bool ref_timer_callback(struct repeating_timer *t){
     ref = ref + value;
-    if (ref > 100)
+    if (ref >= 100)
     {
         move(reftoPWM(100));
     }else{
         move(reftoPWM(ref));
     }
-    printf("Se cambio la ref a:%d\n", ref);
+    //printf("Se cambio la ref a:%d\n", ref);
 }
 
 void Pwm(uint16_t u){

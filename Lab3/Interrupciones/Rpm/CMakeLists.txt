@@ -48,7 +48,9 @@ pico_enable_stdio_usb(Rpm 1)
 target_link_libraries(Rpm
         pico_stdlib
         hardware_pwm
-        hardware_clock)
+        hardware_clocks
+        hardware_irq
+        hardware_gpio)
 
 # Add the standard include files to the build
 target_include_directories(Rpm PRIVATE
