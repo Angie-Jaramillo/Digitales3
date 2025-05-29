@@ -24,7 +24,7 @@ typedef struct {
     uint32_t    rpm;
 } muestra_t;
 
-muestra_t buffer[4500];
+muestra_t buffer[180];
 uint16_t bufferIndex = 0;
 
 const uint8_t encoder_pin = 14;
@@ -44,6 +44,7 @@ struct repeating_timer timer_rpm;
 struct repeating_timer change_ref;
 struct repeating_timer timer_pwm;
 
+
 bool sample_timer_callback(struct repeating_timer *t);
 bool ref_timer_callback(struct repeating_timer *t);
 void encoder_callback(uint gpio, uint32_t events);
@@ -60,11 +61,8 @@ int main()
     stdio_init_all();
 
     gpio_init(encoder_pin);
-    gpio_set_dir(encoder_pin, GPIO_IN);
-    gpio_pull_up(encoder_pin);
-    // gpio_set_irq_enabled_with_callback(encoder_pin, GPIO_IRQ_EDGE_RISE, true, &encoder_callback);
-    gpio_set_irq_enabled(encoder_pin, GPIO_IRQ_EDGE_RISE, true);
-    gpio_set_irq_callback(&encoder_callback);
+    gpio_set_irq_enabled_with_callback(encoder_pin, GPIO_IRQ_EDGE_RISE, true, &encoder_callback);
+
     
     gpio_init(Enable_motor_pin);
     gpio_set_dir(Enable_motor_pin, GPIO_OUT);
@@ -93,12 +91,12 @@ int main()
             int c = getchar_timeout_us(0); // Lectura del comando serial
             if (c != PICO_ERROR_TIMEOUT) {
                 if (c == '\r' || c == '\n') {
-                    printf("Comando recibido: %s\n", comando);
+                    // printf("Comando recibido: %s\n", comando);
                      comando[cmd_i] = '\0';
 
                      if (strncmp(comando, "START ", 6) == 0) { // Comando START
                         int paso = atoi(&comando[6]);
-                        printf("The number is: %d\n", paso);
+                        // printf("The number is: %d\n", paso);
                          if (paso > 0 && paso <= 100) {
                             // Iniciar captura
                             Start(paso);
@@ -106,7 +104,7 @@ int main()
                     }
                     else if (strncmp(comando, "PWM ", 4) == 0) { // Comando PWM
                         int val = atoi(&comando[4]);
-                        printf("The number is: %d\n", val);
+                        // printf("The number is: %d\n", val);
                         if (val >= 0 && val <= 100) {
                             Pwm(val);
                         } 
@@ -125,9 +123,9 @@ int main()
 bool sample_timer_callback(struct repeating_timer *t) {
 
     if(t == &timer_rpm) {
-        // Calcular RPM cada 100 ms
+        // Calcular RPM
         uint32_t current_time = time_us_32() / 1000; // Convertir a milisegundos
-        rpm = (counter * 60) / 20; // RPM = (pulsos por minuto) / 20 ms
+        rpm = (counter * 60) / (20*0.1); // RPM = (pulsos por minuto) / 20 
         //printf("%u\n", counter);
         counter = 0; // Reiniciar contador
 
@@ -179,25 +177,22 @@ void backward(uint16_t u)
 
 void Start(uint16_t valor)
 {
-    printf("Iniciando START:\n");
+    // printf("Iniciando START:\n");
     move(reftoPWM(0));
 
     value = valor;
 
-    add_repeating_timer_ms(-4, sample_timer_callback, NULL, &timer_rpm);
+    add_repeating_timer_ms(-100, sample_timer_callback, NULL, &timer_rpm);
  
     add_repeating_timer_ms(-3000, ref_timer_callback, NULL, &change_ref);
 
-    while (ref<=100)
-    {
-        
-    }
+    while (ref<=100);
 
     bool cancelled = cancel_repeating_timer(&timer_rpm);
     cancelled = cancel_repeating_timer(&change_ref);
     move(0);
     
-    for (int i = 0; i < 4500; i++) {
+    for (int i = 0; i < 180; i++) {
         printf("%u %u %u\n", buffer[i].tiempo_ms, buffer[i].pwm, buffer[i].rpm);
     }
     memset(buffer, 0, sizeof(buffer));
@@ -223,27 +218,29 @@ bool ref_timer_callback(struct repeating_timer *t){
 }
 
 void Pwm(uint16_t u){
-    printf("Iniciando START:\n");
+    // printf("Iniciando START:\n");
     move(reftoPWM(0));
 
     tiempo = 0;
     value = u;
+    move(reftoPWM(value));
 
-    add_repeating_timer_ms(4, sample_timer_callback, NULL, &timer_rpm);
+    add_repeating_timer_ms(-100, sample_timer_callback, NULL, &timer_rpm);
 
-    add_repeating_timer_ms(500, pwm_timer_callback, NULL, &timer_pwm);
+    add_repeating_timer_ms(-500, pwm_timer_callback, NULL, &timer_pwm);
 
-    while (tiempo<=10)
-    {
+    while (tiempo<=10);
 
-    }
+    move(reftoPWM(0));
     bool cancelled = cancel_repeating_timer(&timer_rpm);
-    cancelled = cancel_repeating_timer(&change_ref);
-    move(0);
+    cancelled = cancel_repeating_timer(&timer_pwm);
+    tiempo = 0;
 }
 
 bool pwm_timer_callback(struct repeating_timer *t){
-    printf("%u %u %u\n", time_us_32()/1000, ref, rpm);
-    tiempo = tiempo + 0.5;
-    return true;
+    if(t == &timer_pwm) {
+        printf("%u %u %u\n", time_us_32()/1000, value, rpm);
+        tiempo = tiempo + 0.5;
+        return true;
+    }
 }
