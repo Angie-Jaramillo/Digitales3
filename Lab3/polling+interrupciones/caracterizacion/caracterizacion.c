@@ -46,6 +46,7 @@ static uint8_t  escalon_porc   = 20;
 static uint32_t total_escalones, escalon_actual;
 static uint8_t  pwm_actual;
 static absolute_time_t t_inicio, t_escalon, t_reporte;
+bool imprimir_buffer = false;
 
 // === ISR del encoder: cuenta flancos de subida ===
 void encoder_isr(uint gpio, uint32_t events) {
@@ -168,7 +169,6 @@ int main() {
             else {
                 // Fin de curva: imprimir CSV
                 pwm_set_chan_level(slice, chan, 0);
-                estado = WAIT;
                 for (uint32_t i = 0; i < indice; i++) {
                     printf("%u,%u,%.2f\n",
                         buffer[i].tiempo_ms,
@@ -176,6 +176,7 @@ int main() {
                         buffer[i].rpm
                     );
                 }
+                estado = WAIT;
             }
         }
     }
