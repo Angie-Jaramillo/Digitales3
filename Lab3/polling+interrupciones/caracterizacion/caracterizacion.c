@@ -168,6 +168,7 @@ int main() {
             }
             else {
                 // Fin de curva: imprimir CSV
+                printf("Fin de captura. Total muestras: %u\n", indice);
                 pwm_set_chan_level(slice, chan, 0);
                 for (uint32_t i = 0; i < indice; i++) {
                     printf("%u,%u,%.2f\n",
