@@ -11,7 +11,7 @@
 #define IN1                 16   // L298 IN1
 #define IN2                 17   // L298 IN2
 
-#define CPR                 20   // Pulsos por vuelta
+#define PULSOS_POR_VUELTA                 20   // Pulsos por vuelta
 #define FREQ_PWM            10000
 #define WRAP                100
 #define TIEMPO_MUESTREO_MS  50   // Ventana de muestreo exacta
@@ -45,7 +45,7 @@ static estado_t estado = WAIT;
 static uint8_t  escalon_porc   = 20;
 static uint32_t total_escalones, escalon_actual;
 static uint8_t  pwm_actual;
-static absolute_time_t t_inicio, t_escalon, t_reporte;
+static absolute_time_t t_inicio, t_escalon, t_reporte,t_muestreo;
 bool imprimir_buffer = false;
 
 // === ISR del encoder: cuenta flancos de subida ===
@@ -53,13 +53,6 @@ void encoder_isr(uint gpio, uint32_t events) {
     contador_pulsos++;
 }
 
-// === Callback de timer: dispara cada TIEMPO_MUESTREO_MS ===
-bool muestreo_cb(alarm_id_t id, void *user_data) {
-    flag_muestreo = true;
-
-    add_alarm_in_ms(TIEMPO_MUESTREO_MS, muestreo_cb, NULL, true);
-    return true;
-}
 
 int main() {
     stdio_init_all();
@@ -72,23 +65,22 @@ int main() {
     gpio_init(IN1); gpio_set_dir(IN1, GPIO_OUT); gpio_put(IN1, 1);
     gpio_init(IN2); gpio_set_dir(IN2, GPIO_OUT); gpio_put(IN2, 0);
 
+    // Configurar PWM
     gpio_set_function(PIN_PWM, GPIO_FUNC_PWM);
     uint slice = pwm_gpio_to_slice_num(PIN_PWM);
     uint chan  = pwm_gpio_to_channel(PIN_PWM);
+
     float divider = (SYS_CLK_KHZ * 1000.0f) / (FREQ_PWM * WRAP);
-    divider = fmaxf(1.0f, fminf(divider, 255.0f));
+    if (divider < 1.0f) divider = 1.0f;
+    if (divider > 255.0f) divider = 255.0f;
+
     pwm_config cfg = pwm_get_default_config();
     pwm_config_set_clkdiv(&cfg, divider);
     pwm_config_set_wrap(&cfg, WRAP);
     pwm_init(slice, &cfg, true);
-    pwm_set_chan_level(slice, chan, 0);
-
-    add_alarm_in_ms(TIEMPO_MUESTREO_MS, muestreo_cb, NULL, true);
 
     char comando[MAX_CMD_LEN];
     int cmd_i = 0;
-
-    printf("Listo. Use START <paso> o PWM <valor>\n");
 
     while (1) {
         if (stdio_usb_connected()) {
@@ -113,6 +105,7 @@ int main() {
                         t_reporte       = get_absolute_time();
                         pwm_set_chan_level(slice, chan, 0);
                         printf("tiempo_ms,pwm,rpm\n");
+
                     }
                     // PWM <valor>
                     else if (strncmp(comando, "PWM ", 4) == 0) {
@@ -129,31 +122,39 @@ int main() {
                 }
             }
         }
-        // Esperar comando START o PWM
-        if (flag_muestreo) {
-            flag_muestreo = false;
-            // Leer y resetear el contador de ISR
+        absolute_time_t ahora = get_absolute_time();
+
+        // === Estado CAPTURA: muestreo cada 50ms ===
+        if (estado == CAPTURA &&
+            absolute_time_diff_us(t_muestreo, ahora) >= TIEMPO_MUESTREO_MS * 1000) {
+
+            printf("entro");
             uint32_t p = contador_pulsos;
             contador_pulsos = 0;
-            // Calcular RPM
-            float rpm = ((float)p / CPR) * (60000.0f / TIEMPO_MUESTREO_MS);
+            float rpm = ((float)p / PULSOS_POR_VUELTA) * (60000.0f / TIEMPO_MUESTREO_MS);
+            uint32_t t_rel = absolute_time_diff_us(t_inicio, ahora) / 1000;
 
-            if (estado == CAPTURA && indice < MAX_DATOS) {
-                uint32_t t_rel = absolute_time_diff_us(t_inicio, get_absolute_time()) / 1000;
+            if (indice < MAX_DATOS) {
                 buffer[indice++] = (muestra_t){ t_rel, pwm_actual, rpm };
             }
-            else if (estado == MANUAL) {
-                // Reportar cada 500 ms (polling de tiempo en bucle)
-                if (absolute_time_diff_us(t_reporte, get_absolute_time()) >= 500000) {
-                    printf("PWM=%u, RPM=%.2f\n", pwm_actual, rpm);
-                    t_reporte = get_absolute_time();
-                }
-            }
+
+            t_muestreo = ahora;
         }
 
-        //Cambio de escalón cada TIEMPO_ESCALON_MS
-        if (estado == CAPTURA && 
-            absolute_time_diff_us(t_escalon, get_absolute_time()) >= TIEMPO_ESCALON_MS * 1000) {
+        // === Estado MANUAL: muestreo cada 500ms ===
+        if (estado == MANUAL &&
+            absolute_time_diff_us(t_reporte, ahora) >= 500000) {
+
+            uint32_t p = contador_pulsos;
+            contador_pulsos = 0;
+            float rpm = ((float)p / PULSOS_POR_VUELTA) * (60000.0f / 500.0f);
+            printf("PWM=%u, RPM=%.2f\n", pwm_actual, rpm);
+            t_reporte = ahora;
+        }
+
+        // === Escalones ===
+        if (estado == CAPTURA &&
+            absolute_time_diff_us(t_escalon, ahora) >= TIEMPO_ESCALON_MS * 1000) {
 
             escalon_actual++;
             if (escalon_actual < total_escalones) {
@@ -162,19 +163,18 @@ int main() {
                 else
                     pwm_actual = (total_escalones - escalon_actual) * escalon_porc;
 
-                pwm_actual = (pwm_actual > 100 ? 100 : pwm_actual);
+                if (pwm_actual > 100) pwm_actual = 100;
                 pwm_set_chan_level(slice, chan, pwm_actual);
-                t_escalon = get_absolute_time();
+                t_escalon = ahora;
             }
             else {
-                // Fin de curva: imprimir CSV
+                printf("Escalones completados. Datos capturados:%u\n",indice);
                 pwm_set_chan_level(slice, chan, 0);
                 for (uint32_t i = 0; i < indice; i++) {
-                    printf("%u,%u,%.2f\n",
-                        buffer[i].tiempo_ms,
-                        buffer[i].pwm,
-                        buffer[i].rpm
-                    );
+                    printf("%u,%u,%.2f\n", 
+                        buffer[i].tiempo_ms, 
+                        buffer[i].pwm, 
+                        buffer[i].rpm);
                 }
                 estado = WAIT;
             }
