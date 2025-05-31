@@ -102,7 +102,7 @@ int main() {
                         estado          = CAPTURA;
                         t_inicio        = get_absolute_time();
                         t_escalon       = get_absolute_time();
-                        t_reporte       = get_absolute_time();
+                        t_muestreo       = get_absolute_time();
                         pwm_set_chan_level(slice, chan, 0);
                         printf("tiempo_ms,pwm,rpm\n");
 
