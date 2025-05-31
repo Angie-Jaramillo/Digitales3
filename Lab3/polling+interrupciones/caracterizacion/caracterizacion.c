@@ -168,7 +168,12 @@ int main() {
                 t_escalon = ahora;
             }
             else {
+<<<<<<< HEAD
                 printf("Escalones completados. Datos capturados:%u\n",indice);
+=======
+                // Fin de curva: imprimir CSV
+                printf("Fin de captura. Total muestras: %u\n", indice);
+>>>>>>> 94fba5cc754db568d684e111fbaafff038171ec4
                 pwm_set_chan_level(slice, chan, 0);
                 for (uint32_t i = 0; i < indice; i++) {
                     printf("%u,%u,%.2f\n", 
