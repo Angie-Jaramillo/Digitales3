@@ -136,14 +136,7 @@ int main() {
             }
         }
         absolute_time_t t_actual = get_absolute_time();
-        // Enviar PWM y RPM cada 500 ms si no está capturando
-/*         if (estado == CAPTURA && absolute_time_diff_us(t_escalon, t_actual) >= INTERVALO_ESCALON_MS * 1000) {
-            uint32_t pulsos = contador_pulsos;
-            contador_pulsos = 0;
-            uint32_t rpm = (pulsos * 1000 * 60) / (PULSOS_POR_VUELTA * 500);
-            printf("PWM=%u  RPM=%u\n", pwm_actual, rpm);
-            t_muestreo = get_absolute_time();
-        } */
+
         //Muestreo RPM cada 50 ms
         int64_t delta_us = absolute_time_diff_us(t_muestreo, t_actual);
         if (delta_us >= TIEMPO_MUESTREO_MS * 1000) {

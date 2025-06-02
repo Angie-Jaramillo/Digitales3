@@ -33,7 +33,6 @@ int main() {
         absolute_time_t ahora = get_absolute_time();
         if (absolute_time_diff_us(tiempo_anterior, ahora) >= INTERVALO_MS * 1000) {
             // Calcular RPM
-            // pulsos / (tiempo/1000) * (60 / PULSOS_POR_VUELTA)
             float rpm = (contador_pulsos * 1000.0f / INTERVALO_MS) * (60.0f / PULSOS_POR_VUELTA);
 
             // Mostrar por consola
