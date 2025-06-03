@@ -1,3 +1,13 @@
+/**
+ * @file lazo_abierto.c
+ * @author Juan Manuel Rivera Florez y Angie Paola Jaramillo
+ * @brief 
+ * @version 0.1
+ * @date 2025-06-02
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -20,13 +30,67 @@ int cmd_i = 0;
 struct repeating_timer timer_rpm;
 struct repeating_timer change_ref;
 
+/**
+ * @brief callback function for the sample timer. este timer se usa para calcular la RPM del motor.
+ * 
+ * @param t timer structure pointer
+ * @note This function is called periodically to calculate the RPM based on the encoder pulses.
+ * @return true sigue ejecutando el timer
+ * @return false deja de ejecutar el timer
+ */
 bool sample_timer_callback(struct repeating_timer *t);
+/**
+ * @brief callback function for the reference timer. este timer se usa para cambiar la referencia del motor.
+ * 
+ * @param t timer structure pointer
+ * @note This function is called periodically to update the reference value for the motor.
+ * @return true sigue ejecutando el timer
+ * @return false deja de ejecutar el timer
+ */
 bool ref_timer_callback(struct repeating_timer *t);
+/**
+ * @brief Callback function for the encoder pin interrupt.
+ * 
+ * @param gpio GPIO pin number
+ * @param events Events that triggered the interrupt
+ * @note This function increments the counter each time an edge is detected on the encoder pin.
+ */
 void encoder_callback(uint gpio, uint32_t events);
+/**
+ * @brief Moves the motor based on the given value.
+ * 
+ * @param u Value to set the motor speed (0-6250 for forward, -6250 to 0 for backward)
+ * @note This function sets the PWM levels for the motor control pins.
+ */
 void move(uint16_t u);
+/**
+ * @brief Moves the motor forward with the specified speed.
+ * 
+ * @param u Speed value (0-6250)
+ * @note This function sets the PWM level for the IN1 pin to move the motor forward.
+ */
 void forward(uint16_t u);
+/**
+ * @brief Moves the motor backward with the specified speed.
+ * 
+ * @param u Speed value (0-6250)
+ * @note This function sets the PWM level for the IN2 pin to move the motor backward.
+ */
 void backward(uint16_t u);
+/**
+ * @brief Starts the motor control process with the specified value.
+ * 
+ * @param valor Value to set the reference for the motor (0-100)
+ * @note This function initializes the motor control, sets the reference, and starts the timers.
+ */
 void Start(uint16_t valor);
+/**
+ * @brief Converts a reference value (0-100) to a PWM value (0-6250).
+ * 
+ * @param ref Reference value (0-100)
+ * @return int PWM value (0-6250)
+ * @note This function scales the reference value to the PWM range.
+ */
 int reftoPWM(uint16_t ref);
 
 int main()

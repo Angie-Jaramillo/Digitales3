@@ -1,6 +1,6 @@
 /**
  * @file RPM.c
- * @author Juan Manuel Rivera Florez
+ * @author Juan Manuel Rivera Florez y Angie Paola Jaramillo
  * @brief Programa para medir la velocidad de un motor DC utilizando un encoder, se realiza mediante interrupciones.
  * @version 0.1
  * @date 2025-05-21
@@ -44,16 +44,73 @@ struct repeating_timer timer_rpm;
 struct repeating_timer change_ref;
 struct repeating_timer timer_pwm;
 
-
+/**
+ * @brief Función de callback para el temporizador que calcula los rpm.
+ * 
+ * @param t pointer al temporizador 
+ * @return true sigue ejecutándose el temporizador
+ * @return false deja de ejecutarse el temporizador
+ */
 bool sample_timer_callback(struct repeating_timer *t);
+/**
+ * @brief Función de callback para el temporizador que cambia la referencia de PWM.
+ * 
+ * @param t pointer al temporizador 
+ * @return true sigue ejecutándose el temporizador
+ * @return false deja de ejecutarse el temporizador
+ */
 bool ref_timer_callback(struct repeating_timer *t);
+/**
+ * @brief Función de callback para el encoder que cuenta los pulsos.
+ * 
+ * @param gpio GPIO del encoder
+ * @param events Eventos del GPIO
+ */
 void encoder_callback(uint gpio, uint32_t events);
+/**
+ * @brief Mueve el motor a una velocidad específica.
+ * 
+ * @param u Velocidad del motor en PWM
+ */
 void move(uint16_t u);
+/**
+ * @brief Mueve el motor hacia adelante a una velocidad específica.
+ * 
+ * @param u Velocidad del motor en PWM
+ */
 void forward(uint16_t u);
+/**
+ * @brief Mueve el motor hacia atrás a una velocidad específica.
+ * 
+ * @param u Velocidad del motor en PWM
+ */
 void backward(uint16_t u);
+/**
+ * @brief Inicia el proceso de captura de RPM y PWM.
+ * 
+ * @param valor Valor de referencia para el PWM
+ */
 void Start(uint16_t valor);
+/**
+ * @brief Configura el PWM del motor.
+ * 
+ * @param u Valor de referencia para el PWM
+ */
 void Pwm(uint16_t u);
+/**
+ * @brief Convierte un valor de referencia a un valor de PWM.
+ * 
+ * @param ref Valor de referencia (0-100)
+ * @return int Valor de PWM correspondiente
+ */
 int reftoPWM(uint16_t ref);
+/**
+ * @brief Función de callback para el temporizador que imprime el valor de PWM y RPM.
+ * 
+ * @param t pointer al temporizador 
+ * @return true sigue ejecutándose el temporizador
+ * @return false deja de ejecutarse el temporizador
+ */
 bool pwm_timer_callback(struct repeating_timer *t);
 
 int main()
