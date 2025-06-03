@@ -1,3 +1,13 @@
+/**
+ * @file encoder.c
+ * @author Juan Manuel Rivera y Angie Paola Jaramillo
+ * @brief 
+ * @version 0.1
+ * @date 2025-06-02
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
@@ -12,12 +22,45 @@ volatile uint16_t rpm = 0;
 uint8_t ref = 0, value = 0;
 
 struct repeating_timer timer_rpm;
-
+/**
+ * @brief Callback function for the encoder pin, se activa cuando hay un flanco de subida en el pin del encoder.
+ * 
+ * @param gpio pin del encoder
+ * @param events flanco en el que se activa la interrupción
+ */
 void encoder_callback(uint gpio, uint32_t events);
+/**
+ * @brief Callback function for the timer, se activa cada 100 ms para calcular las RPM.
+ * 
+ * @param t puntero a la estructura del temporizador
+ * @return true si el temporizador sigue activo
+ * @return false si el temporizador se detiene
+ */
 bool sample_timer_callback(struct repeating_timer *t);
+/**
+ * @brief Mueve el motor a una velocidad determinada.
+ * 
+ * @param u velocidad del motor en PWM
+ */
 void move(uint16_t u);
+/**
+ * @brief Mueve el motor hacia adelante a una velocidad determinada.
+ * 
+ * @param u velocidad del motor en PWM
+ */
 void forward(uint16_t u);
+/**
+ * @brief Mueve el motor hacia atrás a una velocidad determinada.
+ * 
+ * @param u velocidad del motor en PWM
+ */
 void backward(uint16_t u);
+/**
+ * @brief Convierte una referencia de velocidad en porcentaje a un valor de PWM.
+ * 
+ * @param ref referencia de velocidad en porcentaje
+ * @return int valor de PWM correspondiente
+ */
 int reftoPWM(uint16_t ref);
 
 int main()

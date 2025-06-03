@@ -1,3 +1,13 @@
+/**
+ * @file Curva.c
+ * @author Juan Manuel Rivera Florez y Angie Paola Jaramillo
+ * @brief 
+ * @version 0.1
+ * @date 2025-06-02
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -29,14 +39,59 @@ int cmd_i = 0;
 
 struct repeating_timer timer_rpm;
 struct repeating_timer change_ref;
-
+/**
+ * @brief Función de callback para el temporizador que calcula los rpm.
+ * 
+ * @param t pointer al temporizador 
+ * @return true sigue ejecutándose el temporizador
+ * @return false deja de ejecutarse el temporizador
+ */
 bool sample_timer_callback(struct repeating_timer *t);
+/**
+ * @brief Función de callback para el temporizador que cambia la referencia.
+ * 
+ * @param t pointer al temporizador
+ * @return true sigue ejecutándose el temporizador
+ * @return false deja de ejecutarse el temporizador
+ */
 bool ref_timer_callback(struct repeating_timer *t);
+/**
+ * @brief Función de callback para el encoder.
+ * 
+ * @param gpio GPIO del encoder
+ * @param events Eventos del GPIO
+ */
 void encoder_callback(uint gpio, uint32_t events);
+/**
+ * @brief Mueve el motor a una velocidad específica.
+ * 
+ * @param u Velocidad del motor (0-6250)
+ */
 void move(uint16_t u);
+/**
+ * @brief Mueve el motor hacia adelante a una velocidad específica.
+ * 
+ * @param u Velocidad del motor (0-6250)
+ */
 void forward(uint16_t u);
+/**
+ * @brief Mueve el motor hacia atrás a una velocidad específica.
+ * 
+ * @param u Velocidad del motor (0-6250)
+ */
 void backward(uint16_t u);
+/**
+ * @brief Inicia el proceso de captura de datos.
+ * 
+ * @param valor Valor de referencia para el motor (0-100)
+ */
 void Start(uint16_t valor);
+/**
+ * @brief Convierte un valor de referencia (0-100) a un valor PWM (0-6250).
+ * 
+ * @param ref Valor de referencia (0-100)
+ * @return int Valor PWM correspondiente
+ */
 int reftoPWM(uint16_t ref);
 
 int main()
