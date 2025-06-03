@@ -1,25 +1,4 @@
-/*
-Implementar el sistema de caracterización del motor DC de tal forma que permita medir en todo instante la 
-velocidad en RPM del motor y el PWM aplicado al mismo, adicionalmente este sistema permite capturar la curva 
-de reacción del motor. Para controlar el sistema es necesario desarrollar una interfaz de comandos a través una 
-terminal. Este sistema debe implementarse usando las 3 estrategias clásicas de control de flujo: polling, 
-interrupciones y polling+interrupciones. 
-• Implemente una interfaz serial con dos comandos: 
-1. START <valor>: Inicia automáticamente la captura de la curva experimental, almacenando temporalmente 
-los datos (MARCA-TEMPORAL, PWM y RPM) en un buffer en memoria. Los datos se envían al PC al finalizar 
-la secuencia de escalones ascendentes y descendentes. El parámetro valor indica la magnitud del cambio 
-del PWM durante la secuencia de captura. Tenga en cuenta que valor no es un divisor exacto de 100, el 
-valor máximo del PWM no puede superar 100.  
-2. PWM <valor>: Cuando el sistema no este efectuando ninguna captura, es posible ajustar manualmente el 
-ciclo de dureza del PWM. El parámetro valor indica el ciclo de dureza que debe generar el MCU para 
-aplicar al motor. Mientras el sistema está en este modo de ejecución (NO CAPTURA), el MCU envía 
-continuamente al PC los valores actuales de PWM y RPM con una frecuencia de 2Hz. 
-• Documentar el código de los 3 programas en Doxygen. 
-• Comparar el rendimiento de las 3 estrategias entre sí y con respecto a los resultados obtenidos con Arduino y 
-microPython en la práctica 2.
-*/
-
-/*@file caracterizacion_sdk.c
+/** @file caracterizacion_sdk.c
  * @brief Programa para caracterizar un motor DC usando PWM y un encoder.
  * 
  * Este programa implementa un sistema de caracterización del motor DC que permite medir la velocidad
@@ -57,7 +36,7 @@ microPython en la práctica 2.
     #define SYS_CLK_KHZ             125000  // 125 MHz
 #endif
 
-/**@brief Estructura para almacenar los datos de muestreo del motor. 
+/** @brief Estructura para almacenar los datos de muestreo del motor. 
  * @param tiempo_ms Tiempo en milisegundos desde el inicio de la captura.
  * @param pwm Valor del PWM aplicado al motor (0-100).
  * @param rpm Velocidad del motor en revoluciones por minuto (RPM).
@@ -68,7 +47,7 @@ typedef struct {
     float    rpm;
 } muestra_t;
 
-/**@brief Estados del sistema de caracterización.
+/** @brief Estados del sistema de caracterización.
  * WAIT: Esperando un comando.
  * MANUAL: En modo manual, ajustando el PWM.
  * CAPTURA: En modo captura, recolectando datos del motor.
@@ -78,7 +57,7 @@ typedef enum { WAIT, MANUAL, CAPTURA } estado_t;
 muestra_t buffer[MAX_DATOS];
 uint32_t indice = 0;
 
-/**@brief Función principal del programa.
+/** @brief Función principal del programa.
  * Configura los pines, PWM y el encoder, y gestiona la captura de datos del motor.
  * Permite iniciar la captura con el comando START <valor> y ajustar el PWM con PWM <valor>.
  * Los datos se envían al PC al finalizar la captura o en modo manual.

@@ -1,3 +1,14 @@
+/** 
+ * @file caracterizacion.c
+ * @brief Sistema de caracterización de motor DC con captura de curva de reacción.
+ * @details Este programa implementa un sistema de caracterización de un motor DC utilizando una Raspberry Pi Pico.
+ * Permite medir la velocidad en RPM y el PWM aplicado al motor, capturando la curva de reacción del motor.
+ * Incluye una interfaz de comandos a través de una terminal para iniciar la captura y ajustar el PWM manualmente.
+ * Utiliza interrupciones para contar pulsos del encoder y polling para manejar la entrada de comandos.
+ * @author Angie Paola Jaramillo Ortega y Juan Manuel Rivera Florez
+ * @year 2025
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -6,23 +17,29 @@
 #include "hardware/irq.h"
 #include "hardware/timer.h"
 
-#define PIN_PWM             15   // Salida PWM al L298
-#define PIN_ENC             14   // Entrada encoder óptico
-#define IN1                 16   // L298 IN1
-#define IN2                 17   // L298 IN2
+#define PIN_PWM             15   ///< Salida PWM al L298
+#define PIN_ENC             14   ///< Entrada encoder óptico
+#define IN1                 16   ///< L298 IN1
+#define IN2                 17   ///< L298 IN2
 
-#define PULSOS_POR_VUELTA                 20   // Pulsos por vuelta
-#define FREQ_PWM            10000
-#define WRAP                100
-#define TIEMPO_MUESTREO_MS  50   // Ventana de muestreo exacta
-#define TIEMPO_ESCALON_MS   2000 // Tiempo entre escalones
-#define MAX_DATOS           20000
-#define MAX_CMD_LEN         32
+#define PULSOS_POR_VUELTA                 20   ///< Pulsos por vuelta
+#define FREQ_PWM            10000      ///< Frecuencia del PWM en Hz
+#define WRAP                100        ///< Valor de wrap del PWM (100% = 100)
+#define TIEMPO_MUESTREO_MS  50          ///< Ventana de muestreo exacta
+#define TIEMPO_ESCALON_MS   2000        ///< Tiempo entre escalones
+#define MAX_DATOS           20000 ///< Máximo de muestras a capturar
+#define MAX_CMD_LEN         32 ///< Longitud máxima del comando
 
 #ifndef SYS_CLK_KHZ
   #define SYS_CLK_KHZ       125000
 #endif
 
+/** @brief Estructura para almacenar muestras de datos
+ * @details Esta estructura almacena el tiempo en milisegundos, el valor del PWM y la velocidad en RPM.
+ * @var tiempo_ms Tiempo en milisegundos desde el inicio de la captura.
+ * @var pwm Valor del PWM aplicado al motor.
+ * @var rpm Velocidad del motor en revoluciones por minuto (RPM).
+ */
 typedef struct {
     uint32_t tiempo_ms;
     uint8_t  pwm;
@@ -35,7 +52,6 @@ static uint32_t  indice = 0;
 
 // Flags y variables compartidas
 static volatile uint32_t contador_pulsos = 0;
-static volatile bool     flag_muestreo   = false;
 
 // Estados
 typedef enum { WAIT, MANUAL, CAPTURA } estado_t;
@@ -48,12 +64,21 @@ static uint8_t  pwm_actual;
 static absolute_time_t t_inicio, t_escalon, t_reporte,t_muestreo;
 bool imprimir_buffer = false;
 
-// === ISR del encoder: cuenta flancos de subida ===
+/** @brief Interrupción del encoder para contar pulsos.
+ * @param gpio GPIO del encoder.
+ * @param events Eventos de interrupción.
+ * @details Esta función se llama cada vez que se detecta un flanco de subida en el pin del encoder.
+ * Incrementa el contador de pulsos.
+ */
 void encoder_isr(uint gpio, uint32_t events) {
     contador_pulsos++;
 }
 
-
+/** @brief Función principal del programa.
+ * @details Inicializa el sistema, configura GPIOs, PWM y maneja la entrada de comandos.
+ * Permite iniciar la captura de la curva de reacción del motor y ajustar el PWM manualmente.
+ * Utiliza polling para leer comandos desde la terminal y gestiona los estados del sistema.
+ */
 int main() {
     stdio_init_all();
 
