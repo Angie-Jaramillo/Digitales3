@@ -1,15 +1,13 @@
-#include "i2c_eeprom.h"
+#include "driver_i2c.h"
 #include "hardware/i2c.h"
 #include "pico/stdlib.h"
+#include <stdio.h>
 
-#define EEPROM_I2C_INSTANCE i2c0
-#define EEPROM_PAGE_SIZE 16
 
-static i2c_inst_t *i2c_bus;
+#define base_addr 0x50 // Dirección del dispositivo EEPROMs
 
 void eeprom_init(i2c_inst_t *i2c, uint sda_pin, uint scl_pin) {
-    i2c_bus = i2c;
-    i2c_init(i2c_bus, 400 * 1000); // 100 kHz
+    i2c_init(i2c, 400 * 1000); // 400 kHz
     gpio_set_function(sda_pin, GPIO_FUNC_I2C);
     gpio_set_function(scl_pin, GPIO_FUNC_I2C);
     gpio_pull_up(sda_pin);
@@ -17,17 +15,16 @@ void eeprom_init(i2c_inst_t *i2c, uint sda_pin, uint scl_pin) {
 }
 
 
-bool eeprom_write_byte(i2c_inst_t *i2c_port, uint8_t value) {
-    uint8_t dev_addr = 0x50;        // Bloque 0, escritura
-    uint8_t mem_addr = 0x00;        // Dirección dentro del bloque
-    uint8_t data[2] = {mem_addr, value};
-
-    int res = i2c_write_blocking(i2c_port, dev_addr, data, 2, false);
-    if (res < 0) {
-        printf("Error en i2c_write_blocking: %d\n", res);
+bool eeprom_write_2bytes(i2c_inst_t *i2c_port, uint8_t offset, uint8_t *values) {
+    if (offset > 254 || values == NULL) {
         return false;
-    } else if (res != 2) {
-        printf("Solo se escribieron %d bytes\n", res);
+    }
+
+    uint8_t buf[3] = {offset, values[0], values[1]};
+
+    int res = i2c_write_blocking(i2c_port, base_addr, buf, 3, false);
+
+    if (res != 3) {
         return false;
     }
 
@@ -35,23 +32,20 @@ bool eeprom_write_byte(i2c_inst_t *i2c_port, uint8_t value) {
     return true;
 }
 
-uint8_t eeprom_read_byte(i2c_inst_t *i2c_port) {
-    uint8_t dev_addr_wr = 0x50;
-    uint8_t dev_addr_rd = 0x50;
-    uint8_t mem_addr = 0x00;
-    uint8_t buf = 0xFF;
-
-    int res = i2c_write_blocking(i2c_port, dev_addr_wr, &mem_addr, 1, true);
-    if (res < 0) {
-        printf("Error en i2c_write_blocking (lectura): %d\n", res);
-        return 0xEE;
+bool eeprom_read_nbytes(i2c_inst_t *i2c_port, uint8_t offset,uint8_t *data, uint8_t len) {
+    if ((offset + len) > 256 || len == 0 || data == NULL) {
+        return false;
     }
 
-    res = i2c_read_blocking(i2c_port, dev_addr_rd, &buf, 1, false);
-    if (res < 0) {
-        printf("Error en i2c_read_blocking: %d\n", res);
-        return 0xEE;
+    int res = i2c_write_blocking(i2c_port, base_addr, &offset, 1, true);
+    if (res != 1) {
+        return false;
     }
 
-    return buf;
+    res = i2c_read_blocking(i2c_port, base_addr, data, len, false);
+    if (res != (int)len) {
+        return false;
+    }
+
+    return true;
 }

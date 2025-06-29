@@ -6,7 +6,7 @@
 
 
 void eeprom_init(i2c_inst_t *i2c, uint sda_pin, uint scl_pin);
-bool eeprom_write_byte(i2c_inst_t *i2c_port, uint8_t value);
-uint8_t eeprom_read_byte(i2c_inst_t *i2c_port);
+bool eeprom_write_2bytes(i2c_inst_t *i2c, uint8_t offset, uint8_t *values);
+bool eeprom_read_nbytes(i2c_inst_t *i2c, uint8_t offset, uint8_t *data, uint8_t nbytes);
 
 #endif
