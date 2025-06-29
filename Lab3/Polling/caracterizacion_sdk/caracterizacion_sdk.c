@@ -159,7 +159,7 @@ int main() {
                             estado = MANUAL;
                         } 
                     }
-                cmd_i = 0;
+                    cmd_i = 0;
                 } else if (cmd_i < (int)(sizeof(comando) - 1)) {
                     comando[cmd_i++] = (char)c;
                 }

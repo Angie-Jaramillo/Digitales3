@@ -2,10 +2,7 @@
 #include <string.h>
 #include "pico/stdlib.h"
 
-
 #include "FSM.h"
-
-
 
 int main()
 {

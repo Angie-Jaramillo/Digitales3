@@ -1,5 +1,6 @@
 #include "FSM.h"
 #include <stdio.h>
+#include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include "driver_i2c.h"
@@ -16,6 +17,12 @@
 
 #define LED_PIN 25
 
+typedef struct {
+    uint8_t posicion_geografica;
+    uint8_t nivel_de_ruido;
+} medicion_t;
+
+medicion_t medicion_actual;
 
 // Definición del tipo de función de estado 
 typedef void (*state_func_t)(void);
@@ -31,9 +38,8 @@ static void state_dump(void);
 static state_func_t current_state;
 
 static volatile bool button_pressed = false;
-static volatile bool dump_requested = false;
-
 static volatile bool capture_cancelled = false;
+static uint8_t Offset = 2;
 
 void gpio_callback(uint gpio, uint32_t events) {
 
@@ -46,10 +52,10 @@ void gpio_callback(uint gpio, uint32_t events) {
     }
 }
 
-void fsm_request_dump() {
+/* void fsm_request_dump() {
     dump_requested = true; // Establece la bandera de solicitud de volcado
     printf("Dump requested!\n");
-}
+} */
 
 void fsm_init(void) {
     // Inicializa el estado actual a la función de estado inicial
@@ -111,33 +117,43 @@ static void init_state(void) {
 }
 
 static void state_idle(void) {
-
-    // Aquí se puede implementar la lógica del estado idle
-    // tienes que empezar en modo de bajo consumo y
-    // esperar a que ocurra un evento para cambiar
-
-
     gpio_put(PIN_NARANJA, false);
     gpio_put(PIN_ROJO, false);
     gpio_put(PIN_AMARILLO, false);      
     gpio_put(PIN_VERDE, true);    // Encender el LED verde para indicar que está en estado idle
-    
 
-    __wfi(); // Espera por una interrupción
+    char comando[32];
+    int cmd_i = 0;
+
+    // __wfi(); // Espera por una interrupción
 
     // Si se presiona el botón, cambiar al estado de captura
 
-    if (button_pressed) {
-        button_pressed = false; // Reiniciar la bandera
-        printf("Button pressed! Transitioning to capturing state.\n");
-        current_state = state_capturing;
-    } else if (dump_requested) {
-        dump_requested = false; // Reiniciar la bandera
-        printf("Dump requested! Transitioning to dump state.\n");
-        current_state = state_dump;
+    while (1) {
+        if (button_pressed) {
+            button_pressed = false;
+            printf("Button pressed! Transitioning to capturing state.\n");
+            current_state = state_capturing;
+            return;  // Sale del while(1)
+        }
+        if (stdio_usb_connected()) {
+            int c = getchar_timeout_us(0);
+            if (c != PICO_ERROR_TIMEOUT) {
+                if (c == '\r' || c == '\n') {
+                    comando[cmd_i] = '\0';
+                    printf("Comando recibido: %s\n", comando);
+                    if (strncmp(comando, "DUMP", 4) == 0) {
+                        current_state = state_dump;
+                        return;  // Sale del while(1)
+                    }
+                    cmd_i = 0;  // Reinicia buffer
+                } else if (cmd_i < (int)(sizeof(comando) - 1)) {
+                    comando[cmd_i++] = (char)c;
+                }
+            }
+        }
+        sleep_ms(10); // Evita consumir 100% de CPU
     }
-    
-
 }
 
 static void state_capturing(void) {
@@ -156,9 +172,8 @@ static void state_capturing(void) {
     
     //reiniciar las bandaras de captura
     button_pressed = false;
-    // dump_requested = false;
 
-    const uint32_t capture_duration_ms = 10000; // Simulación de 10s
+/*     const uint32_t capture_duration_ms = 10000; // Simulación de 10s
     const uint32_t step_ms = 100; // Chequear cada 100ms
     uint32_t elapsed = 0;
 
@@ -176,7 +191,11 @@ static void state_capturing(void) {
         }
 
         elapsed += step_ms;
-    }
+    } */
+
+        // Aquí simulas valores
+    medicion_actual.posicion_geografica = 42;  // Simula ID ubicación
+    medicion_actual.nivel_de_ruido = 85;       // Simula nivel dB
 
     sleep_ms(2000); // Simula el tiempo de captura de datos
     printf("Data captured successfully. Transitioning to storing state.\n");
@@ -186,28 +205,32 @@ static void state_capturing(void) {
 static void state_storing(void) {
     // Aquí se guardan los datos capturados en la memoria
 
-    uint8_t datos_a_guardar[5][2] = {
-        {100, 255},  // portería 1
+/*     uint8_t datos_a_guardar[5][2] = {
+        {101, 235},  // portería 1
         {28, 35},  // portería 2
-        {20, 79},  // portería 3
-        {93, 14},  // portería 4
+        {22, 79},  // portería 3
+        {93, 15},  // portería 4
         {1, 93}   // portería 5
+    }; */
+
+    uint8_t datos_a_guardar[2] = {
+        medicion_actual.posicion_geografica,
+        medicion_actual.nivel_de_ruido
     };
 
     printf("Escribiendo...\n");
-    for (uint8_t i = 0; i < 5; i++) {
-        uint8_t offset = i * 2;
-        if (!eeprom_write_2bytes(i2c0, offset, datos_a_guardar[i])) {
-            printf("Error writing to EEPROM at offset %d\n", offset);
-            current_state = state_error; // Cambiar al estado de error si falla la escritura
-            return;
-        } else {
-            sleep_ms(10); // Tiempo extra por seguridad
-            gpio_put(PIN_AMARILLO, false); // Apagar el LED amarillo
-            gpio_put(PIN_NARANJA, true); // Encender el LED naranja para indicar que está almacenando
-            printf("Data written successfully\n");
-            current_state = state_idle; // Volver al estado idle después de almacenar
-        }
+
+    if (!eeprom_write_2bytes(i2c0, Offset, datos_a_guardar)) {
+        printf("Error writing to EEPROM");
+        current_state = state_error; // Cambiar al estado de error si falla la escritura
+    }else{
+        sleep_ms(10); // Tiempo extra por seguridad
+        gpio_put(PIN_AMARILLO, false); // Apagar el LED amarillo
+        gpio_put(PIN_NARANJA, true); // Encender el LED naranja para indicar que está almacenando
+        printf("Data written successfully\n");
+        Offset += 2;
+        sleep_ms(3000);
+        current_state = state_idle; // Cambiar al estado idle después de almacenar
     }
 }
 
@@ -228,14 +251,12 @@ static void state_error(void){
 static void state_dump(void){
     // este estado solo se entra por el comando de dump en serial
     
-    // Aquí se puede implementar la lógica del estado de volcado
-    // por ejemplo, enviar los datos capturados a través de UART o guardarlos en la
-
     printf("Dumping data...\n");
     uint8_t buffer_lectura[10] = {0};
+
     if (eeprom_read_nbytes(i2c0, 0x00, buffer_lectura, 10)) {
         for (int i = 0; i < 5; i++) {
-            printf(buffer_lectura[i * 2], buffer_lectura[i * 2 + 1]);
+            printf("%d , %d\n", buffer_lectura[i * 2], buffer_lectura[i * 2 + 1]);
         }   
         printf("Data dumped successfully. Transitioning to idle state.\n");
         current_state = state_idle; // Volver al estado idle    
@@ -244,8 +265,8 @@ static void state_dump(void){
         current_state = state_error; // Cambiar al estado de error si falla la lectura
     }
 
-    printf("Data dumped successfully. Transitioning to idle state.\n");
-    current_state = state_idle; // Volver al estado idle    
+/*     printf("Data dumped successfully. Transitioning to idle state.\n");
+    current_state = state_idle; // Volver al estado idle     */
 
 }
 
