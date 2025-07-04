@@ -285,7 +285,7 @@ static void state_error(void)
     sleep_ms(2000); // Simula el tiempo de manejo del error
 
     // Después de manejar el error, se puede volver al estado idle
-    current_state = state_idle;
+    current_state = init_state;
 }
 
 static void state_dump(void)
