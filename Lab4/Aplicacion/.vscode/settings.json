@@ -41,6 +41,7 @@
         "stdio.h": "c",
         "string.h": "c",
         "stdint.h": "c",
-        "i2c.h": "c"
+        "i2c.h": "c",
+        "uart.h": "c"
     }
 }

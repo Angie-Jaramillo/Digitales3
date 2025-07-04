@@ -42,6 +42,7 @@ add_executable(Aplicacion
                 src/main.c
                 src/FSM.c
                 src/driver_i2c.c
+                src/driver_gps.c
                 )
 
 pico_set_program_name(Aplicacion "Aplicacion")
@@ -56,6 +57,7 @@ target_link_libraries(Aplicacion
         pico_stdlib
         hardware_gpio
         hardware_i2c
+        hardware_uart
 )
 
 # Add the standard include files to the build

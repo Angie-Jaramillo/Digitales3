@@ -37,16 +37,12 @@ static state_func_t current_state;
 
 static volatile bool button_pressed = false;
 static volatile bool capture_cancelled = false;
-static uint8_t Offset_B0 = 0; //Offset de posición de escritura en la EEPROM con respecto a la última escritura
-static uint8_t Offset_B1 = 0; //Offset de posición de escritura en la EEPROM con respecto a la última escritura
+static uint8_t Offset_B0 = 0; // Offset de posición de escritura en la EEPROM con respecto a la última escritura
+static uint8_t Offset_B1 = 0; // Offset de posición de escritura en la EEPROM con respecto a la última escritura
 
-uint8_t test = 0;
 
 void gpio_callback(uint gpio, uint32_t events)
 {
-
-    printf("IRQ: gpio=%d, events=0x%x\n", gpio, events);
-
     if (current_state == state_capturing)
     {
         capture_cancelled = true;
@@ -99,6 +95,9 @@ void fsm_init(void)
     // Inicializa el I2C para la EEPROM
     eeprom_init(i2c0, SDA_PIN, SCL_PIN);
 
+    // Inicializa el UART para el GPS
+    gps_init();
+
     current_state = init_state;
 }
 
@@ -112,14 +111,13 @@ void fsm_run(void)
 
 static void init_state(void)
 {
+    while (!gps_has_fix())
+    {
+        printf("Esperando GPS...\n");
+        sleep_ms(5000); // Espera antes de volver a verificar
+    }
 
-    // Aquí se puede realizar la inicialización necesaria
-
-    // Cambia al estado idle después de la inicialización
-    printf("FSM initialized. Transitioning to idle state.\n");
-    // if(gps) {
-    //     current_state = state_idle;
-    //
+    printf("Transitioning to IDLE.\n");
     current_state = state_idle;
 }
 
@@ -174,40 +172,52 @@ static void state_idle(void)
 
 static void state_capturing(void)
 {
-    // leer el gps y el microfono y guardar los datos
-    // si hay un error, cambiar al estado de error
-    // si se ha capturado correctamente, cambiar al estado de idle
-
-    // if (condition_for_error) {
-    //     current_state = state_error;
-    // } else if (condition_for_success) {
-    //     current_state = state_idle;
-    // }
-
     // reiniciar las bandaras de captura
     button_pressed = false;
+
+    // leer el gps y el microfono y guardar los datos
+    // si hay un error, cambiar al estado de error
+    char line[128];
+    double lat = 0.0, lon = 0.0;
+
+    printf("Capturando datos del GPS...\n");
+
+    bool fix_ok = false;
+
+    while (!fix_ok)
+    {
+        if (!gps_has_fix())
+        {
+            printf("PPS perdido. GPS sin fix físico.\n");
+            current_state = state_error;
+            return;
+        }
+        if (gps_read_line(line, sizeof(line)))
+        {
+            if (strncmp(line, "$GNRMC", 6) == 0)
+            {
+                fix_ok = gps_parse_GNRMC(line, &lat, &lon);
+                if (!fix_ok)
+                {
+                    printf("Fix lógico inválido (Status=V). Error.\n");
+                    current_state = state_error;
+                    return;
+                }
+            }
+        }
+
+        sleep_ms(20); // Pequeño respiro al CPU
+    }
+
+    // Si llegas aquí, PPS sigue bien y `$GNRMC` es válido
+    printf("Fix OK. Lat: %.6f, Lon: %.6f\n", lat, lon);
 
     gpio_put(PIN_VERDE, false);   // Apagar el LED verde
     gpio_put(PIN_AMARILLO, true); // Encender el LED amarillo para indicar que está capturando
 
-    if(test == 0) {
-        medicion_actual.latitud = 6.321156;
-        medicion_actual.longitud = -75.580374;
-        medicion_actual.nivel_de_ruido = 15;
-    } else if(test == 1) {
-        medicion_actual.latitud = 53.432446;
-        medicion_actual.longitud = 8.302225;
-        medicion_actual.nivel_de_ruido = 82;
-    }else if(test == 2) {
-        medicion_actual.latitud = 6.244204;
-        medicion_actual.longitud = -75.575202;
-        medicion_actual.nivel_de_ruido = 45;
-    } else{
-        medicion_actual.latitud = 6.250000;
-        medicion_actual.longitud = -75.600000;
-        medicion_actual.nivel_de_ruido = 30;
-    } 
-
+    medicion_actual.latitud = 0.0;
+    medicion_actual.longitud = 0.0;
+    medicion_actual.nivel_de_ruido = 0.0;
 
     sleep_ms(2000); // Simula el tiempo de captura de datos
     printf("Data captured successfully. Transitioning to storing state.\n");
@@ -215,7 +225,7 @@ static void state_capturing(void)
 }
 
 static void state_storing(void)
-{    
+{
     double lat = medicion_actual.latitud;
     double lon = medicion_actual.longitud;
     uint8_t nivel = medicion_actual.nivel_de_ruido;
@@ -232,11 +242,12 @@ static void state_storing(void)
 
     uint8_t page_size = 16;
 
-/*     if ((Offset_B0 % page_size) + 16 > page_size) {
-        Offset_B0 += page_size - (Offset_B0 % page_size);
-    } */
+    /*     if ((Offset_B0 % page_size) + 16 > page_size) {
+            Offset_B0 += page_size - (Offset_B0 % page_size);
+        } */
 
-    if (!eeprom_write_nbytes(i2c0, EEPROM_BLOCK0, Offset_B0, buffer, 16)) {
+    if (!eeprom_write_nbytes(i2c0, EEPROM_BLOCK0, Offset_B0, buffer, 16))
+    {
         printf("Error escribiendo EEPROM\n");
         current_state = state_error;
         return;
@@ -244,7 +255,8 @@ static void state_storing(void)
 
     Offset_B0 += 16;
 
-    if (!eeprom_write_nbytes(i2c0, EEPROM_BLOCK1, Offset_B1, &nivel, 1)) {
+    if (!eeprom_write_nbytes(i2c0, EEPROM_BLOCK1, Offset_B1, &nivel, 1))
+    {
         printf("Error escribiendo EEPROM\n");
         current_state = state_error;
         return;
@@ -254,7 +266,7 @@ static void state_storing(void)
 
     test++; // Incrementar el contador de pruebas
 
-    sleep_ms(300);                  // Tiempo extra por seguridad
+    sleep_ms(300);                 // Tiempo extra por seguridad
     gpio_put(PIN_AMARILLO, false); // Apagar el LED amarillo
     gpio_put(PIN_NARANJA, true);   // Encender el LED naranja para indicar que está almacenando
     printf("Data written successfully\n");
@@ -285,23 +297,26 @@ static void state_dump(void)
     uint8_t pos_B0 = 0;
     uint8_t pos_B1 = 0;
 
-    for (uint8_t i = 0; i < 4; i++) {
+    for (uint8_t i = 0; i < 4; i++)
+    {
 
-        if (!eeprom_read_nbytes(i2c0, EEPROM_BLOCK0, pos_B0, buffer_lectura, 16)) {
+        if (!eeprom_read_nbytes(i2c0, EEPROM_BLOCK0, pos_B0, buffer_lectura, 16))
+        {
             printf("Error leyendo EEPROM en pos %d\n", pos_B0);
             current_state = state_error;
             return;
         }
 
-        if (!eeprom_read_nbytes(i2c0, EEPROM_BLOCK1, pos_B1, &nivel_ruido, 1)) {
+        if (!eeprom_read_nbytes(i2c0, EEPROM_BLOCK1, pos_B1, &nivel_ruido, 1))
+        {
             printf("Error leyendo EEPROM en pos %d\n", pos_B1);
             current_state = state_error;
             return;
         }
 
         double lat, lon;
-        memcpy(&lat,  buffer_lectura + 0, 8);
-        memcpy(&lon,  buffer_lectura + 8, 8);
+        memcpy(&lat, buffer_lectura + 0, 8);
+        memcpy(&lon, buffer_lectura + 8, 8);
 
         printf("Coordenadas: %.6f, %.6f, Nivel de ruido: %d dB\n",
                lat, lon, nivel_ruido);

@@ -1,5 +1,5 @@
-#ifndef I2C_EEPROM_H
-#define I2C_EEPROM_H
+#ifndef DRIVER_I2C_H
+#define DRIVER_I2C_H
 
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
