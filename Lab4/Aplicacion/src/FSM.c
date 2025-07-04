@@ -161,8 +161,8 @@ static void state_capturing(void)
 
     // leer el gps y el microfono y guardar los datos
     // si hay un error, cambiar al estado de error
-    //char line[128];
-/*     double lat = 0.0, lon = 0.0;
+    char line[128];
+    double lat = 0.0, lon = 0.0;
 
     printf("Capturando datos del GPS...\n");
 
@@ -170,7 +170,7 @@ static void state_capturing(void)
 
     while (!fix_ok)
     {
-        if (!gps_has_fix())
+        if (!pps_detected)
         {
             printf("PPS perdido. GPS sin fix físico.\n");
             current_state = state_error;
@@ -194,7 +194,7 @@ static void state_capturing(void)
     }
 
     // Si llegas aquí, PPS sigue bien y `$GNRMC` es válido
-    printf("Fix OK. Lat: %.6f, Lon: %.6f\n", lat, lon); */
+    printf("Fix OK. Lat: %.6f, Lon: %.6f\n", lat, lon);
 
     gpio_put(PIN_VERDE, false);   // Apagar el LED verde
     gpio_put(PIN_AMARILLO, true); // Encender el LED amarillo para indicar que está capturando
