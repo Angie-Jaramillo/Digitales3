@@ -14,6 +14,17 @@
 // Definición de un tipo para la función de estado (puntero a una funcion)
 typedef void (*state_func_t)(void);
 
+/**
+ * @brief Estructura para almacenar las mediciones.
+ * 
+ * Esta estructura contiene la información de una medición, incluyendo
+ * la longitud, latitud y el nivel de ruido.
+ */
+typedef struct {
+    double longitud;
+    double latitud;
+    uint8_t nivel_de_ruido;
+} medicion_t;
 
 /**
  * @brief Enumeración de los estados de la máquina de estados.
@@ -29,8 +40,6 @@ typedef enum {
     STATE_ERROR,
     STATE_DUMP
 } fsm_state_enum_t;
-
-
 
 /**
  * @brief Inicializa la máquina de estados.
@@ -48,7 +57,6 @@ void fsm_init(void);
  */
 void fsm_run(void);
 
-
 /**
  * @brief funcion para obtener el estado actual.
  *
@@ -59,6 +67,12 @@ void fsm_run(void);
  */
 fsm_state_enum_t fsm_get_current_state(void);
 
+/**
+ * @brief Solicita mostrar los de datos.
+ * 
+ * Esta función establece una bandera para indicar que se ha solicitado mostrar los datos guardados.
+ * El volcado se puede utilizar para depurar o almacenar información del estado actual.
+ */
 void fsm_request_dump(void);
 
 
