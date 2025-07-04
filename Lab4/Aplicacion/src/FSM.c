@@ -3,22 +3,8 @@
 #include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
+#include "driver_GPS.h"
 #include "driver_i2c.h"
-
-#define BUTTON_PIN 11 // Definir el pin del botón
-
-#define PIN_ROJO 12     // Definir el pin del LED rojo
-#define PIN_AMARILLO 14 // Definir el pin del LED amarillo
-#define PIN_NARANJA 13  // Definir el pin del LED naranja
-#define PIN_VERDE 15    // Definir el pin del LED verde
-
-#define EEPROM_BLOCK0 0x50
-#define EEPROM_BLOCK1 0x51
-
-#define SDA_PIN 16
-#define SCL_PIN 17
-
-#define LED_PIN 25
 
 medicion_t medicion_actual;
 
@@ -37,26 +23,24 @@ static state_func_t current_state;
 
 static volatile bool button_pressed = false;
 static volatile bool capture_cancelled = false;
+static volatile bool pps_detected = false;
 static uint8_t Offset_B0 = 0; // Offset de posición de escritura en la EEPROM con respecto a la última escritura
 static uint8_t Offset_B1 = 0; // Offset de posición de escritura en la EEPROM con respecto a la última escritura
 
-
-void gpio_callback(uint gpio, uint32_t events)
-{
-    if (current_state == state_capturing)
-    {
-        capture_cancelled = true;
+void gpio_callback(uint gpio, uint32_t events) {
+    if (gpio == BUTTON_PIN) {
+        if (current_state == state_capturing) {
+            capture_cancelled = true;
+        } else {
+            button_pressed = true;
+        }
     }
-    else
-    {
-        button_pressed = true;
+    else if (gpio == GPS_PPS_PIN) {
+        if (events & GPIO_IRQ_EDGE_RISE) {
+            pps_detected = true;  // O lo que uses para PPS
+        }
     }
 }
-
-/* void fsm_request_dump() {
-    dump_requested = true; // Establece la bandera de solicitud de volcado
-    printf("Dump requested!\n");
-} */
 
 void fsm_init(void)
 {
@@ -64,6 +48,7 @@ void fsm_init(void)
 
     // Configura la interrupción del botón
     gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
+    gpio_set_irq_enabled_with_callback(GPS_PPS_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
 
     // Inicializa el GPIO del botón
     gpio_init(BUTTON_PIN);
@@ -111,7 +96,7 @@ void fsm_run(void)
 
 static void init_state(void)
 {
-    while (!gps_has_fix())
+    while (!pps_detected)
     {
         printf("Esperando GPS...\n");
         sleep_ms(5000); // Espera antes de volver a verificar
@@ -130,7 +115,6 @@ static void state_idle(void)
 
     char comando[32];
     int cmd_i = 0;
-
     // __wfi(); // Espera por una interrupción
 
     // Si se presiona el botón, cambiar al estado de captura
@@ -177,8 +161,8 @@ static void state_capturing(void)
 
     // leer el gps y el microfono y guardar los datos
     // si hay un error, cambiar al estado de error
-    char line[128];
-    double lat = 0.0, lon = 0.0;
+    //char line[128];
+/*     double lat = 0.0, lon = 0.0;
 
     printf("Capturando datos del GPS...\n");
 
@@ -210,7 +194,7 @@ static void state_capturing(void)
     }
 
     // Si llegas aquí, PPS sigue bien y `$GNRMC` es válido
-    printf("Fix OK. Lat: %.6f, Lon: %.6f\n", lat, lon);
+    printf("Fix OK. Lat: %.6f, Lon: %.6f\n", lat, lon); */
 
     gpio_put(PIN_VERDE, false);   // Apagar el LED verde
     gpio_put(PIN_AMARILLO, true); // Encender el LED amarillo para indicar que está capturando
@@ -263,8 +247,6 @@ static void state_storing(void)
     }
 
     Offset_B1 += 1;
-
-    test++; // Incrementar el contador de pruebas
 
     sleep_ms(300);                 // Tiempo extra por seguridad
     gpio_put(PIN_AMARILLO, false); // Apagar el LED amarillo

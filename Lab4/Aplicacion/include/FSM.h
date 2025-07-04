@@ -7,9 +7,25 @@
 #include "hardware/gpio.h"
 #include "hardware/sync.h"
 
-
 #ifndef _FSM_H_
 #define _FSM_H_
+
+#define BUTTON_PIN 11 // Definir el pin del botón
+
+#define PIN_ROJO 12     // Definir el pin del LED rojo
+#define PIN_AMARILLO 14 // Definir el pin del LED amarillo
+#define PIN_NARANJA 13  // Definir el pin del LED naranja
+#define PIN_VERDE 15    // Definir el pin del LED verde
+
+#define EEPROM_BLOCK0 0x50
+#define EEPROM_BLOCK1 0x51
+
+#define SDA_PIN 16
+#define SCL_PIN 17
+
+#define GPS_PPS_PIN 3
+#define LED_PIN 25
+
 
 // Definición de un tipo para la función de estado (puntero a una funcion)
 typedef void (*state_func_t)(void);

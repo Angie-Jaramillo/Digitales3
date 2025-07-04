@@ -4,23 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-static volatile bool pps_detected = false;
-
-static void pps_callback(uint gpio, uint32_t events) {
-    if (gpio == GPS_PPS_PIN && (events & GPIO_IRQ_EDGE_RISE)) {
-        pps_detected = true;
-    }
-}
-
-bool gps_has_fix(void) {
+/* bool gps_has_fix(void) {
     return pps_detected;
-}
+} */
 
 void gps_init(void) {
     uart_init(GPS_UART, GPS_BAUDRATE);
     gpio_set_function(GPS_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(GPS_RX_PIN, GPIO_FUNC_UART);
-    gpio_set_irq_enabled_with_callback(GPS_PPS_PIN, GPIO_IRQ_EDGE_RISE, true, &pps_callback);
 }
 
 bool gps_read_line(char *line, size_t max_len) {

@@ -8,7 +8,6 @@
 #define GPS_BAUDRATE 9600
 #define GPS_TX_PIN 4
 #define GPS_RX_PIN 5
-#define GPS_PPS_PIN 6
 
 void gps_init(void);
 bool gps_read_line(char *line, size_t max_len);

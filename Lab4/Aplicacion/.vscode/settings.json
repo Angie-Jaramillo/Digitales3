@@ -42,6 +42,8 @@
         "string.h": "c",
         "stdint.h": "c",
         "i2c.h": "c",
-        "uart.h": "c"
+        "uart.h": "c",
+        "stdlib.h": "c",
+        "driver_gps.h": "c"
     }
 }

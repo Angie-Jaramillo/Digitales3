@@ -42,7 +42,7 @@ add_executable(Aplicacion
                 src/main.c
                 src/FSM.c
                 src/driver_i2c.c
-                src/driver_gps.c
+                src/driver_GPS.c
                 )
 
 pico_set_program_name(Aplicacion "Aplicacion")
