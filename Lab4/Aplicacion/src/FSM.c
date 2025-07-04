@@ -183,7 +183,7 @@ static void state_capturing(void)
                 fix_ok = gps_parse_GNRMC(line, &lat, &lon);
                 if (!fix_ok)
                 {
-                    printf("Fix lógico inválido (Status=V). Error.\n");
+                    printf("Fix inválido. Error.\n");
                     current_state = state_error;
                     return;
                 }

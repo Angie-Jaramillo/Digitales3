@@ -12,6 +12,5 @@
 void gps_init(void);
 bool gps_read_line(char *line, size_t max_len);
 bool gps_parse_GNRMC(const char *line, double *lat, double *lon);
-//bool gps_has_fix(void);
 
 #endif

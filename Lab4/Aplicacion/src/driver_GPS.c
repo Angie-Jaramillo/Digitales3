@@ -38,11 +38,26 @@ bool gps_parse_GNRMC(const char *line, double *lat, double *lon) {
     int scanned = sscanf(line, "$%6[^,],%*[^,],%c,%[^,],%c,%[^,],%c",
                          type, &status, lat_s, &ns, lon_s, &ew);
 
-    if (scanned != 6) return false;
-    if (status != 'A') return false; // no fix
+    if (scanned != 6) {
+        printf("Parse failed: scanned %d fields\n", scanned);
+        return false;
+    }
+    if (status != 'A') {
+        printf("No fix (Status=%c)\n", status);
+        return false;
+    }
+    if (strlen(lat_s) == 0 || strlen(lon_s) == 0) {
+        printf("Empty lat/lon field\n");
+        return false;
+    }
 
     double raw_lat = atof(lat_s);
     double raw_lon = atof(lon_s);
+
+    if (raw_lat == 0.0 || raw_lon == 0.0) {
+        printf("Zero lat/lon → invalid\n");
+        return false;
+    }
 
     double deg_lat = (int)(raw_lat / 100);
     double min_lat = raw_lat - deg_lat * 100;
