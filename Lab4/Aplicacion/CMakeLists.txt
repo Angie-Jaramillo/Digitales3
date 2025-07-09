@@ -43,6 +43,7 @@ add_executable(Aplicacion
                 src/FSM.c
                 src/driver_i2c.c
                 src/driver_GPS.c
+                src/driver_adc.c
                 )
 
 pico_set_program_name(Aplicacion "Aplicacion")
@@ -58,6 +59,8 @@ target_link_libraries(Aplicacion
         hardware_gpio
         hardware_i2c
         hardware_uart
+        hardware_adc
+        hardware_timer
 )
 
 # Add the standard include files to the build

@@ -1,5 +1,5 @@
-#ifndef _GPS_H_
-#define _GPS_H_
+#ifndef DRIVER_GPS_H_
+#define DRIVER_GPS_H_
 
 #include "pico/stdlib.h"
 

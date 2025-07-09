@@ -11,6 +11,8 @@
 #define _FSM_H_
 
 #define BUTTON_PIN 11 // Definir el pin del botón
+#define GPS_PPS_PIN 3 // Definir el pin del PPS del GPS
+#define ADC_GPIO 26   // Definir el pin del ADC
 
 #define PIN_ROJO 12     // Definir el pin del LED rojo
 #define PIN_AMARILLO 14 // Definir el pin del LED amarillo
@@ -23,7 +25,6 @@
 #define SDA_PIN 16
 #define SCL_PIN 17
 
-#define GPS_PPS_PIN 3
 #define LED_PIN 25
 
 

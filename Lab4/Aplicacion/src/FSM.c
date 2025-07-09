@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
-#include "hardware/i2c.h"
 #include "driver_GPS.h"
 #include "driver_i2c.h"
+#include "driver_adc.h"
 
 medicion_t medicion_actual;
 
@@ -20,32 +20,73 @@ static void state_error(void);
 static void state_dump(void);
 
 static state_func_t current_state;
+struct repeating_timer pps_check;
+static struct repeating_timer adc_sample;
 
 static volatile bool button_pressed = false;
 static volatile bool capture_cancelled = false;
 static volatile bool pps_detected = false;
-static uint8_t Offset_B0 = 0; // Offset de posición de escritura en la EEPROM con respecto a la última escritura
-static uint8_t Offset_B1 = 0; // Offset de posición de escritura en la EEPROM con respecto a la última escritura
+static uint8_t Offset_B0 = 0; // Offset para el bloque 0 de la EEPROM
+static uint8_t Offset_B1 = 0; // Offset para el bloque 1 de la EEPROM
+
+// ADC sampling control
+static uint32_t adc_suma = 0;
+static uint16_t adc_count = 0;
+static const uint16_t adc_target_count = 200; // 200 muestras = ~10 s a 50 ms por muestra
+
+bool check_pps_callback(struct repeating_timer *t) {
+    if (!pps_detected) {
+        printf("PPS perdido detectado por timer.\n");
+        current_state = state_error;
+        return false; // parar el timer
+    }else {
+        pps_detected = false; // Reiniciar la bandera de PPS detectado
+        return true; // sigue corriendo
+    }
+
+}
+
+bool adc_sampling_callback(struct repeating_timer *t) {
+    if (current_state == state_error) {
+        return false;
+    }
+
+    uint16_t muestra = adc_read_sample();
+    adc_suma += muestra;
+    adc_count++;
+
+    if (adc_count >= adc_target_count) {
+        uint16_t promedio = adc_suma / adc_count;
+        printf("Nivel de ruido final: %d\n", promedio);
+
+        medicion_actual.nivel_de_ruido = promedio >> 4; // Ajusta rango si quieres
+
+        current_state = state_storing;
+        return false;
+    }
+
+    return true;
+}
 
 void gpio_callback(uint gpio, uint32_t events) {
     if (gpio == BUTTON_PIN) {
         if (current_state == state_capturing) {
             capture_cancelled = true;
-        } else {
+        } else if (current_state == state_idle) {
             button_pressed = true;
+        }else {
+            button_pressed = false;
         }
     }
     else if (gpio == GPS_PPS_PIN) {
         if (events & GPIO_IRQ_EDGE_RISE) {
-            pps_detected = true;  // O lo que uses para PPS
+            pps_detected = true;
         }
     }
 }
 
 void fsm_init(void)
 {
-    // Inicializa el estado actual a la función de estado inicial
-
     // Configura la interrupción del botón
     gpio_set_irq_enabled_with_callback(BUTTON_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
     gpio_set_irq_enabled_with_callback(GPS_PPS_PIN, GPIO_IRQ_EDGE_RISE, true, &gpio_callback);
@@ -80,8 +121,10 @@ void fsm_init(void)
     // Inicializa el I2C para la EEPROM
     eeprom_init(i2c0, SDA_PIN, SCL_PIN);
 
-    // Inicializa el UART para el GPS
+    // Inicializa UART del GPS
     gps_init();
+
+    adc_driver_init(ADC_GPIO, 0);
 
     current_state = init_state;
 }
@@ -126,7 +169,7 @@ static void state_idle(void)
             button_pressed = false;
             printf("Button pressed! Transitioning to capturing state.\n");
             current_state = state_capturing;
-            return; // Sale del while(1)
+            return;
         }
         if (stdio_usb_connected())
         {
@@ -156,13 +199,21 @@ static void state_idle(void)
 
 static void state_capturing(void)
 {
+    printf("inicio captura");
     // reiniciar las bandaras de captura
     button_pressed = false;
 
+    gpio_put(PIN_VERDE, false);   // Apagar el LED verde
+    gpio_put(PIN_AMARILLO, true); // Encender el LED amarillo para indicar que está capturando
+
+    add_repeating_timer_ms(2000, check_pps_callback, NULL, &pps_check); // Iniciar el temporizador para verificar PPS
+    add_repeating_timer_ms(50, adc_sampling_callback, NULL, &adc_sample); // Iniciar el temporizador para verificar PPS
+
     // leer el gps y el microfono y guardar los datos
     // si hay un error, cambiar al estado de error
-    char line[128];
+    char datos[128];
     double lat = 0.0, lon = 0.0;
+    uint8_t nivel_ruido;
 
     printf("Capturando datos del GPS...\n");
 
@@ -170,42 +221,40 @@ static void state_capturing(void)
 
     while (!fix_ok)
     {
-        if (!pps_detected)
+        if (current_state == state_error)
         {
             printf("PPS perdido. GPS sin fix físico.\n");
-            current_state = state_error;
             return;
         }
-        if (gps_read_line(line, sizeof(line)))
+        if (gps_read_line(datos, sizeof(datos)))
         {
-            if (strncmp(line, "$GNRMC", 6) == 0)
+            if (strncmp(datos, "$GNRMC", 6) == 0)
             {
-                fix_ok = gps_parse_GNRMC(line, &lat, &lon);
+                fix_ok = gps_parse_GNRMC(datos, &lat, &lon);
                 if (!fix_ok)
                 {
                     printf("Fix inválido. Error.\n");
                     current_state = state_error;
                     return;
+                }else{
+                    break;
                 }
             }
         }
-
-        sleep_ms(20); // Pequeño respiro al CPU
     }
+    
+    printf("Lat, Lon: %.6f, %.6f\n", lat, lon);
 
-    // Si llegas aquí, PPS sigue bien y `$GNRMC` es válido
-    printf("Fix OK. Lat: %.6f, Lon: %.6f\n", lat, lon);
-
-    gpio_put(PIN_VERDE, false);   // Apagar el LED verde
-    gpio_put(PIN_AMARILLO, true); // Encender el LED amarillo para indicar que está capturando
+    //PPS sigue bien y los datos son validos
+    cancel_repeating_timer(&pps_check);
 
     medicion_actual.latitud = 0.0;
     medicion_actual.longitud = 0.0;
     medicion_actual.nivel_de_ruido = 0.0;
 
-    sleep_ms(2000); // Simula el tiempo de captura de datos
     printf("Data captured successfully. Transitioning to storing state.\n");
-    current_state = state_storing; // Volver al estado de almacenamiento después de capturar
+
+    // current_state = state_storing; // Volver al estado de almacenamiento después de capturar
 }
 
 static void state_storing(void)
