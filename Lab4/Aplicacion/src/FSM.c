@@ -1,10 +1,13 @@
 #include "FSM.h"
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "pico/stdlib.h"
 #include "driver_GPS.h"
 #include "driver_i2c.h"
 #include "driver_adc.h"
+
+#define N_SAMPLES 10000
 
 medicion_t medicion_actual;
 
@@ -20,7 +23,7 @@ static void state_error(void);
 static void state_dump(void);
 
 static state_func_t current_state;
-struct repeating_timer pps_check;
+static struct repeating_timer pps_check;
 static struct repeating_timer adc_sample;
 
 static volatile bool button_pressed = false;
@@ -29,14 +32,12 @@ static volatile bool pps_detected = false;
 static uint8_t Offset_B0 = 0; // Offset para el bloque 0 de la EEPROM
 static uint8_t Offset_B1 = 0; // Offset para el bloque 1 de la EEPROM
 
-// ADC sampling control
-static uint32_t adc_suma = 0;
-static uint16_t adc_count = 0;
-static const uint16_t adc_target_count = 200; // 200 muestras = ~10 s a 50 ms por muestra
+volatile uint16_t adc_buffer[N_SAMPLES];
+volatile uint32_t adc_index = 0;
+volatile bool buffer_full = false;
 
 bool check_pps_callback(struct repeating_timer *t) {
     if (!pps_detected) {
-        printf("PPS perdido detectado por timer.\n");
         current_state = state_error;
         return false; // parar el timer
     }else {
@@ -51,19 +52,17 @@ bool adc_sampling_callback(struct repeating_timer *t) {
         return false;
     }
 
-    uint16_t muestra = adc_read_sample();
-    adc_suma += muestra;
-    adc_count++;
-
-    if (adc_count >= adc_target_count) {
-        uint16_t promedio = adc_suma / adc_count;
-        printf("Nivel de ruido final: %d\n", promedio);
-
-        medicion_actual.nivel_de_ruido = promedio >> 4; // Ajusta rango si quieres
-
-        current_state = state_storing;
-        return false;
+    if (adc_index < N_SAMPLES) {
+        uint16_t raw = adc_read_sample();
+        adc_buffer[adc_index++] = raw;
     }
+
+    if (adc_index >= N_SAMPLES) {
+        buffer_full = true;
+        return false;  // Para detener el timer
+    }
+
+    return true;  // Sigue
 
     return true;
 }
@@ -202,12 +201,12 @@ static void state_capturing(void)
     printf("inicio captura");
     // reiniciar las bandaras de captura
     button_pressed = false;
+    capture_cancelled = false;
 
     gpio_put(PIN_VERDE, false);   // Apagar el LED verde
     gpio_put(PIN_AMARILLO, true); // Encender el LED amarillo para indicar que está capturando
 
     add_repeating_timer_ms(2000, check_pps_callback, NULL, &pps_check); // Iniciar el temporizador para verificar PPS
-    add_repeating_timer_ms(50, adc_sampling_callback, NULL, &adc_sample); // Iniciar el temporizador para verificar PPS
 
     // leer el gps y el microfono y guardar los datos
     // si hay un error, cambiar al estado de error
@@ -223,7 +222,6 @@ static void state_capturing(void)
     {
         if (current_state == state_error)
         {
-            printf("PPS perdido. GPS sin fix físico.\n");
             return;
         }
         if (gps_read_line(datos, sizeof(datos)))
@@ -233,10 +231,11 @@ static void state_capturing(void)
                 fix_ok = gps_parse_GNRMC(datos, &lat, &lon);
                 if (!fix_ok)
                 {
-                    printf("Fix inválido. Error.\n");
                     current_state = state_error;
                     return;
-                }else{
+                }
+                else
+                {
                     break;
                 }
             }
@@ -245,16 +244,49 @@ static void state_capturing(void)
     
     printf("Lat, Lon: %.6f, %.6f\n", lat, lon);
 
-    //PPS sigue bien y los datos son validos
-    cancel_repeating_timer(&pps_check);
+    adc_index = 0;
+    buffer_full = false;
 
-    medicion_actual.latitud = 0.0;
-    medicion_actual.longitud = 0.0;
-    medicion_actual.nivel_de_ruido = 0.0;
+    add_repeating_timer_ms(50, adc_sampling_callback, NULL, &adc_sample); // Iniciar el temporizador para verificar PPS
+
+    while (!buffer_full) {
+        if (!pps_detected) {
+            printf("PPS not detected, transitioning to error state.\n");
+            cancel_repeating_timer(&adc_sample);
+            cancel_repeating_timer(&pps_check);
+            current_state = state_error;
+            return;
+        }
+        if (capture_cancelled) {
+            printf("Capture cancelled by button press.\n");
+            cancel_repeating_timer(&adc_sample);
+            cancel_repeating_timer(&pps_check);
+            current_state = state_error;
+            return;
+        }
+    }
+    uint32_t suma = 0;
+    for (uint32_t i = 0; i < N_SAMPLES; i++) {
+        int16_t centered = adc_buffer[i] - 2048;
+        suma += centered * centered;
+    }
+
+    float rms = sqrtf((float)suma / N_SAMPLES);
+    float vin_rms = (rms / 4095.0f) * 3.3f;
+    float db_spl = 20.0f * log10f(vin_rms / 0.00005f);
+    nivel_ruido = (uint8_t)(db_spl + 0.5);
+
+    printf("dB: %.2f\n", nivel_ruido);
+
+    //PPS sigue bien y los datos son validos
+
+    medicion_actual.latitud = lat;
+    medicion_actual.longitud = lon;
+    medicion_actual.nivel_de_ruido = nivel_ruido;
 
     printf("Data captured successfully. Transitioning to storing state.\n");
 
-    // current_state = state_storing; // Volver al estado de almacenamiento después de capturar
+    current_state = state_storing; // Volver al estado de almacenamiento después de capturar
 }
 
 static void state_storing(void)
