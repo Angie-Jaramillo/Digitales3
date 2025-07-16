@@ -29,6 +29,7 @@ static struct repeating_timer adc_sample;
 static volatile bool button_pressed = false;
 static volatile bool capture_cancelled = false;
 static volatile bool pps_detected = false;
+static int motivo_error = 0;
 static uint8_t Offset_B0 = 0; // Offset para el bloque 0 de la EEPROM
 static uint8_t Offset_B1 = 0; // Offset para el bloque 1 de la EEPROM
 
@@ -61,8 +62,6 @@ bool adc_sampling_callback(struct repeating_timer *t) {
         buffer_full = true;
         return false;  // Para detener el timer
     }
-
-    return true;  // Sigue
 
     return true;
 }
@@ -141,7 +140,7 @@ static void init_state(void)
     while (!pps_detected)
     {
         printf("Esperando GPS...\n");
-        sleep_ms(5000); // Espera antes de volver a verificar
+        sleep_ms(5000);
     }
 
     printf("Transitioning to IDLE.\n");
@@ -157,7 +156,7 @@ static void state_idle(void)
 
     char comando[32];
     int cmd_i = 0;
-    // __wfi(); // Espera por una interrupción
+    __wfi(); // Espera por una interrupción
 
     // Si se presiona el botón, cambiar al estado de captura
 
@@ -192,7 +191,7 @@ static void state_idle(void)
                 }
             }
         }
-        sleep_ms(10); // Evita consumir 100% de CPU
+        sleep_ms(10);
     }
 }
 
@@ -208,8 +207,6 @@ static void state_capturing(void)
 
     add_repeating_timer_ms(2000, check_pps_callback, NULL, &pps_check); // Iniciar el temporizador para verificar PPS
 
-    // leer el gps y el microfono y guardar los datos
-    // si hay un error, cambiar al estado de error
     char datos[128];
     double lat = 0.0, lon = 0.0;
     uint8_t nivel_ruido;
@@ -222,6 +219,7 @@ static void state_capturing(void)
     {
         if (current_state == state_error)
         {
+            motivo_error = 1; // Error por falta de PPS
             return;
         }
         if (gps_read_line(datos, sizeof(datos)))
@@ -247,11 +245,12 @@ static void state_capturing(void)
     adc_index = 0;
     buffer_full = false;
 
-    add_repeating_timer_ms(50, adc_sampling_callback, NULL, &adc_sample); // Iniciar el temporizador para verificar PPS
+    add_repeating_timer_ms(1, adc_sampling_callback, NULL, &adc_sample); // Iniciar el temporizador para verificar PPS
 
     while (!buffer_full) {
         if (!pps_detected) {
             printf("PPS not detected, transitioning to error state.\n");
+            motivo_error = 1; // Error por falta de PPS
             cancel_repeating_timer(&adc_sample);
             cancel_repeating_timer(&pps_check);
             current_state = state_error;
@@ -265,6 +264,10 @@ static void state_capturing(void)
             return;
         }
     }
+
+    cancel_repeating_timer(&adc_sample);
+    cancel_repeating_timer(&pps_check);
+
     uint32_t suma = 0;
     for (uint32_t i = 0; i < N_SAMPLES; i++) {
         int16_t centered = adc_buffer[i] - 2048;
@@ -276,7 +279,7 @@ static void state_capturing(void)
     float db_spl = 20.0f * log10f(vin_rms / 0.00005f);
     nivel_ruido = (uint8_t)(db_spl + 0.5);
 
-    printf("dB: %.2f\n", nivel_ruido);
+    printf("Nivel de Ruido (uint8_t): %u\n", nivel_ruido);
 
     //PPS sigue bien y los datos son validos
 
@@ -307,10 +310,6 @@ static void state_storing(void)
 
     uint8_t page_size = 16;
 
-    /*     if ((Offset_B0 % page_size) + 16 > page_size) {
-            Offset_B0 += page_size - (Offset_B0 % page_size);
-        } */
-
     if (!eeprom_write_nbytes(i2c0, EEPROM_BLOCK0, Offset_B0, buffer, 16))
     {
         printf("Error escribiendo EEPROM\n");
@@ -329,23 +328,44 @@ static void state_storing(void)
 
     Offset_B1 += 1;
 
-    sleep_ms(300);                 // Tiempo extra por seguridad
     gpio_put(PIN_AMARILLO, false); // Apagar el LED amarillo
-    gpio_put(PIN_NARANJA, true);   // Encender el LED naranja para indicar que está almacenando
     printf("Data written successfully\n");
+    for (int i = 0; i < 6; i++) {  // 6 ciclos de 500 ms = 3 s
+        gpio_put(PIN_NARANJA, true);// Encender el LED naranja para indicar que ya almacenó
+        sleep_ms(250);
+        gpio_put(PIN_NARANJA, false);
+        sleep_ms(250);
+    }
+
     current_state = state_idle; // Cambiar al estado idle después de almacenar
 }
 
 static void state_error(void)
-{
-    // Aquí se puede implementar la lógica del estado de error
-    // por ejemplo, encender un LED rojo o reiniciar el sistema
-
+{   
     gpio_put(PIN_AMARILLO, false); // Apagar el LED amarillo
     gpio_put(PIN_NARANJA, false);
-    gpio_put(PIN_ROJO, true); // Encender el LED rojo para indicar un error
 
-    sleep_ms(2000); // Simula el tiempo de manejo del error
+    if(capture_cancelled) {
+        gpio_put(PIN_ROJO, true);
+        sleep_ms(3000);
+        gpio_put(PIN_ROJO, false);
+        capture_cancelled = false; // Reiniciar la bandera de captura cancelada
+    }else if (motivo_error == 1) {
+        printf("Error: No se detectó PPS.\n");
+        for (int i = 0; i < 3; i++) {
+            gpio_put(PIN_ROJO, true);
+            sleep_ms(500);
+            gpio_put(PIN_ROJO, false);
+            sleep_ms(500);
+        }
+        motivo_error = 0; // Reiniciar el motivo del error
+    } else {
+        gpio_put(PIN_ROJO, true);
+        sleep_ms(2000);
+        gpio_put(PIN_ROJO, false);
+    }
+    
+    gpio_put(PIN_ROJO, true); // Encender el LED rojo para indicar un error
 
     // Después de manejar el error, se puede volver al estado idle
     current_state = init_state;
@@ -360,7 +380,7 @@ static void state_dump(void)
     uint8_t pos_B0 = 0;
     uint8_t pos_B1 = 0;
 
-    for (uint8_t i = 0; i < 4; i++)
+    for (uint8_t i = 0; i < 5; i++)
     {
 
         if (!eeprom_read_nbytes(i2c0, EEPROM_BLOCK0, pos_B0, buffer_lectura, 16))

@@ -45,5 +45,6 @@
         "uart.h": "c",
         "stdlib.h": "c",
         "driver_gps.h": "c"
-    }
+    },
+    "idf.pythonInstallPath": "/usr/bin/python"
 }
