@@ -139,8 +139,7 @@ static void init_state(void)
 {
     while (!pps_detected)
     {
-        printf("Esperando GPS...\n");
-        sleep_ms(5000);
+        //esperando GPS
     }
 
     printf("Transitioning to IDLE.\n");
@@ -409,5 +408,5 @@ static void state_dump(void)
     }
 
     printf("Dump completado. Regresando a estado IDLE.\n");
-    current_state = state_idle;
+    current_state = init_state;
 }
